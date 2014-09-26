@@ -1,0 +1,19 @@
+{
+    "name": "webmod/yii2-wmcommon",
+    "description": "Yii 2 based WebModularity common module.",
+    "keywords": ["yii2"],
+    "type": "yii2-extension",
+    "authors": [
+        {
+            "name": "Rory Hellyer",
+            "email": "rory@webmodularity.com",
+            "homepage": "http://www.webmodularity.com/"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "wmc\\": ""
+        }
+    }
+}
+
