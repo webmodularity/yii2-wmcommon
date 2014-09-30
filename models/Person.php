@@ -8,24 +8,15 @@ use Yii;
  * This is the model class for table "person".
  *
  * @property integer $id
- * @property integer $user_id
  * @property string $email
  * @property string $first_name
  * @property string $last_name
  * @property integer $address_id
  *
- * @property BranchSupervisor[] $branchSupervisors
- * @property EquipmentPackage[] $equipmentPackages
- * @property EquipmentPerson[] $equipmentPeople
- * @property EquipmentRequest[] $equipmentRequests
- * @property License[] $licenses
- * @property User $user
  * @property Address $address
  * @property PersonDetail $personDetail
  * @property PersonPhone[] $personPhones
- * @property PersonThirdPartySystem[] $personThirdPartySystems
- * @property ThirdPartySystem[] $thirdPartySystems
- * @property RegionSupervisor[] $regionSupervisors
+ * @property User $user
  */
 class Person extends \wmc\models\ActiveRecord
 {
@@ -43,10 +34,10 @@ class Person extends \wmc\models\ActiveRecord
     public function rules()
     {
         return [
-            [['user_id', 'address_id'], 'integer'],
             [['email', 'first_name', 'last_name'], 'required'],
+            [['address_id'], 'integer'],
             [['email'], 'string', 'max' => 100],
-            [['email'], 'email'],
+            ['email', 'email'],
             [['first_name', 'last_name'], 'string', 'max' => 50]
         ];
     }
@@ -58,20 +49,11 @@ class Person extends \wmc\models\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'user_id' => 'User ID',
-            'email' => 'Email Address',
+            'email' => 'Email',
             'first_name' => 'First Name',
             'last_name' => 'Last Name',
-            'address_id' => 'Address ID',
+            'address_id' => 'Address',
         ];
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getUser()
-    {
-        return $this->hasOne(User::className(), ['id' => 'user_id']);
     }
 
     /**
@@ -98,4 +80,11 @@ class Person extends \wmc\models\ActiveRecord
         return $this->hasMany(PersonPhone::className(), ['person_id' => 'id']);
     }
 
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getUser()
+    {
+        return $this->hasOne(User::className(), ['person_id' => 'id']);
+    }
 }
