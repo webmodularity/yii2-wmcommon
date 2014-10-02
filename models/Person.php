@@ -34,10 +34,11 @@ class Person extends \wmc\models\ActiveRecord
     public function rules()
     {
         return [
+            [['email', 'first_name', 'last_name'], 'trim'],
             [['email', 'first_name', 'last_name'], 'required'],
-            [['address_id'], 'integer'],
             [['email'], 'string', 'max' => 100],
             ['email', 'email'],
+            [['address_id'], 'integer'],
             [['first_name', 'last_name'], 'string', 'max' => 50]
         ];
     }
