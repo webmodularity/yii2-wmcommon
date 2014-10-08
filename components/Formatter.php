@@ -5,11 +5,11 @@ namespace wmc\components;
 class Formatter extends \yii\i18n\Formatter
 {
     public function asMysqlDatetime($datetime = 'now') {
-        return date("Y-m-d H:i:s", strtotime($datetime));
+        return self::asDatetime($datetime, "php:Y-m-d H:i:s");
     }
 
     public function asMysqlDate($date = 'now') {
-        return date("Y-m-d", strtotime($date));
+        return self::asDate($date, "php:Y-m-d");
     }
 
 }
