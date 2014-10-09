@@ -1,6 +1,6 @@
 <?php
 
-namespace wma\models;
+namespace wmc\models;
 
 use Yii;
 use yii\base\Model;
@@ -12,8 +12,10 @@ class LoginForm extends Model
     public $username;
     public $password;
     public $rememberMe = true;
+
     private $_user = false;
-    
+    private $_sessionDuration = 14400;
+
     /**
      * @inheritdoc
      */
@@ -64,15 +66,7 @@ class LoginForm extends Model
     public function login()
     {
         if ($this->validate()) {
-            if (   Yii::$app->getModule(Yii::$app->adminModuleId)->getOption('user', 'allowCookies') === true
-                && $this->rememberMe) {
-                // Cookies
-                $duration = Yii::$app->getAdminModule()->getOption('user', 'sessionDuration');
-            } else {
-                // Session
-                $duration = 0;
-            }
-            return Yii::$app->user->login($this->getUser(), $duration);
+            return Yii::$app->user->login($this->getUser(), $this->_sessionDuration);
         } else {
             return false;
         }
@@ -88,5 +82,11 @@ class LoginForm extends Model
             $this->_user = User::findByUsername($this->username);
         }
         return $this->_user;
+    }
+
+    public function setSessionDuration($seconds) {
+        if (is_int($seconds) && $seconds >= 0) {
+            $this->_sessionDuration = $seconds;
+        }
     }
 }

@@ -1,10 +1,10 @@
 <?php
 
-namespace wma\models;
+namespace wmc\models;
 
 use Yii;
-use wma\models\User;
-use wma\models\UserKeyLog;
+use wmc\models\User;
+use wmc\models\UserKeyLog;
 use yii\behaviors\TimestampBehavior;
 
 /**

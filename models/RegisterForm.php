@@ -1,7 +1,7 @@
 <?php
-namespace wma\models;
+namespace wmc\models;
 
-use wma\models\User;
+use wmc\models\User;
 use wmc\models\Person;
 use yii\base\Model;
 use Yii;
@@ -29,7 +29,7 @@ class RegisterForm extends Model
             [['email'], 'email'],
             [['email', 'first_name', 'last_name', 'username'], 'trim'],
             [['username'], 'match', 'pattern' => '/^[A-Za-z0-9_]+$/u', 'message' => "{attribute} can contain only letters, numbers or underscores."],
-            [['username'], 'unique', 'targetClass' => '\wma\models\User', 'message' => 'This username is already in use.'],
+            [['username'], 'unique', 'targetClass' => '\wmc\models\User', 'message' => 'This username is already in use.'],
             ['password_confirm', 'compare', 'compareAttribute' => 'password', 'message' => 'Passwords do not match.'],
         ];
     }
