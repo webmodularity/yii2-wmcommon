@@ -18,7 +18,7 @@ use Yii;
  * @property PersonPhone[] $personPhones
  * @property User $user
  */
-class Person extends \wmc\models\ActiveRecord
+class Person extends \wmc\db\ActiveRecord
 {
     /**
      * @inheritdoc
@@ -87,5 +87,9 @@ class Person extends \wmc\models\ActiveRecord
     public function getUser()
     {
         return $this->hasOne(User::className(), ['person_id' => 'id']);
+    }
+
+    public function getFullName() {
+        return $this->first_name . "&nbsp;" . $this->last_name;
     }
 }

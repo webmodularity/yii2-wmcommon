@@ -23,7 +23,7 @@ use yii\behaviors\TimestampBehavior;
  * @property Person $person
  * @property UserKey[] $userKeys
  */
-class User extends \wmc\models\ActiveRecord implements IdentityInterface
+class User extends \wmc\db\ActiveRecord implements IdentityInterface
 {
     const STATUS_DELETED = -1;
     const STATUS_ACTIVE = 1;

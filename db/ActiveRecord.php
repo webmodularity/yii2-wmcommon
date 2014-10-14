@@ -1,6 +1,6 @@
 <?php
 
-namespace wmc\models;
+namespace wmc\db;
 
 class ActiveRecord extends \yii\db\ActiveRecord
 {

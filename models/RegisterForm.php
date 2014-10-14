@@ -54,7 +54,7 @@ class RegisterForm extends Model
      * @param integer $roleId
      * @return User|null the saved model or null if saving fails
      */
-    public function registerUser() {
+    public function registerUser($roleId, $statusId) {
         if ($this->validate()) {
             $person = null;
             // Check if we have an existing Person model
@@ -94,11 +94,13 @@ class RegisterForm extends Model
             $user->username = $this->username;
             $user->setPassword($this->password);
             $user->generateAuthKey();
-            $user->role_id = Yii::$app->getAdminModule()->getOption('userRegister', 'newUserRole');
-            $user->status = Yii::$app->getAdminModule()->getOption('userRegister', 'newUserStatus');
+            $user->role_id = $roleId;
+            $user->status = $statusId;
             $user->created_at = Yii::$app->formatter->asMysqlDatetime();
-            $user->save();
-            return $user;
+             if ($user->save()) {
+                 UserLog::add(UserLog::CREATE, $user->person_id);
+                 return $user;
+             }
         }
 
         return null;

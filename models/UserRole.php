@@ -12,7 +12,7 @@ use Yii;
  *
  * @property User[] $users
  */
-class UserRole extends \wmc\models\ActiveRecord
+class UserRole extends \wmc\db\ActiveRecord
 {
     /**
      * @inheritdoc

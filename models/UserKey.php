@@ -4,7 +4,6 @@ namespace wmc\models;
 
 use Yii;
 use wmc\models\User;
-use wmc\models\UserKeyLog;
 use yii\behaviors\TimestampBehavior;
 
 /**
@@ -18,7 +17,7 @@ use yii\behaviors\TimestampBehavior;
  *
  * @property User $user
  */
-class UserKey extends \wmc\models\ActiveRecord
+class UserKey extends \wmc\db\ActiveRecord
 {
     const TYPE_RESET_PASSWORD = 1;
     const EXPIRE_RESET_PASSWORD = 'P1D';
@@ -87,12 +86,7 @@ class UserKey extends \wmc\models\ActiveRecord
             $key->save(false);
 
             // Log add
-            $log = new UserKeyLog();
-            $log->user_id = $key->user_id;
-            $log->key_type = $key->type;
-            $log->action_type = UserKeyLog::ADD;
-            $log->ip = inet_pton(Yii::$app->request->getUserIP());
-            $log->save(false);
+            UserLog::add(UserLog::RESET_PASSWORD_REQUEST, $userId);
         }
         return $key;
     }
@@ -106,13 +100,7 @@ class UserKey extends \wmc\models\ActiveRecord
         )->all();
 
         foreach ($expiredKeys as $expiredKey) {
-            $log = new UserKeyLog([
-                    'user_id' => $expiredKey->user_id,
-                    'key_type' => $expiredKey->type,
-                    'action_type' => UserKeyLog::EXPIRED,
-                    'ip' => NULL
-                ]);
-            $log->save(false);
+            UserLog::add(UserLog::RESET_PASSWORD_EXPIRED, $expiredKey->user_id);
             $expiredKey->delete();
         }
     }

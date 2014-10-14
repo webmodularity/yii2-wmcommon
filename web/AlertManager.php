@@ -16,23 +16,10 @@ class AlertManager extends \yii\base\Component
         'danger' => []
     ];
 
-    public function addSuccess($message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
-        $this->add('success', $message, $heading, $options, $flashId);
-    }
-
-    public function addWarning($message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
-        $this->add('warning', $message, $heading, $options, $flashId);
-    }
-
-    public function addInfo($message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
-        $this->add('info', $message, $heading, $options, $flashId);
-    }
-
-    public function addDanger($message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
-        $this->add('danger', $message, $heading, $options, $flashId);
-    }
-
-    protected function add($style, $message, $heading, $options, $flashId) {
+    public function add($style, $message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
+        if ($style == 'error') {
+            $style = 'danger';
+        }
         $class = $this->alertClass;
         $settings = compact('class', 'style', 'message', 'heading');
         $config = ArrayHelper::merge($settings, $options);
