@@ -13,7 +13,7 @@ use yii\behaviors\TimestampBehavior;
  * @property integer $type
  * @property string $user_key
  * @property string $created_at
- * @property string $expire_time
+ * @property string $expire
  *
  * @property User $user
  */
@@ -48,9 +48,9 @@ class UserKey extends \wmc\db\ActiveRecord
     {
         return [
             /*
-            [['user_id', 'type', 'key', 'create_time', 'expire_time'], 'required'],
+            [['user_id', 'type', 'key', 'created_at', 'expire'], 'required'],
             [['user_id', 'type'], 'integer'],
-            [['create_time', 'expire_time'], 'safe'],
+            [['created_at', 'expire'], 'safe'],
             [['key'], 'string', 'max' => 32],
             [['key'], 'unique']
             */
@@ -67,7 +67,7 @@ class UserKey extends \wmc\db\ActiveRecord
             'type' => 'Type',
             'user_key' => 'Key',
             'created_at' => 'Create Time',
-            'expire_time' => 'Expire Time',
+            'expire' => 'Expire Time',
         ];
     }
 
@@ -77,12 +77,12 @@ class UserKey extends \wmc\db\ActiveRecord
         if (is_null($key)) {
             $date = new \DateTime();
             $date->add(new \DateInterval(self::getExpireFromType($type)));
-            $expireTime = Yii::$app->formatter->asMysqlDatetime($date);
+            $expire = Yii::$app->formatter->asMysqlDatetime($date);
             $key = new UserKey();
             $key->user_id = $userId;
             $key->type = self::getTypeIdFromType($type);
             $key->user_key = Yii::$app->security->generateRandomString();
-            $key->expire_time = $expireTime;
+            $key->expire = $expire;
             $key->save(false);
 
             // Log add
@@ -93,9 +93,9 @@ class UserKey extends \wmc\db\ActiveRecord
 
     public static function expiredGarbageCollection() {
         $expiredKeys = self::find()->where(
-            'expire_time <= :expire_time',
+            'expire <= :expire',
             [
-                ':expire_time' => Yii::$app->formatter->asMysqlDatetime()
+                ':expire' => Yii::$app->formatter->asMysqlDatetime()
             ]
         )->all();
 

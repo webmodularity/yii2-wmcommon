@@ -4,6 +4,7 @@ namespace wmc\models;
 
 use Yii;
 use yii\behaviors\TimestampBehavior;
+use wmc\models\UserLogUserAgent;
 
 /**
  * This is the model class for table "user_log".
@@ -11,13 +12,15 @@ use yii\behaviors\TimestampBehavior;
  * @property integer $id
  * @property integer $user_id
  * @property integer $action_type
- * @property integer $backend
- * @property string $created_at
- * @property string $ip
+ * @property integer $user_agent_id
  * @property string $session_id
+ * @property integer $backend
+ * @property string $ip
+ * @property string $created_at
  *
  * @property User $user
  * @property Session $session
+ * @property UserLogUserAgent $userAgent
  */
 class UserLog extends \wmc\db\ActiveRecord
 {
@@ -28,8 +31,6 @@ class UserLog extends \wmc\db\ActiveRecord
     const RESET_PASSWORD_REQUEST = 5;
     const RESET_PASSWORD_SUCCESS = 6;
     const RESET_PASSWORD_EXPIRED = 7;
-
-    //public $backend = 0;
 
     public function behaviors() {
         return [
@@ -74,10 +75,11 @@ class UserLog extends \wmc\db\ActiveRecord
             'id' => 'ID',
             'user_id' => 'User ID',
             'action_type' => 'Action Type',
-            'backend' => 'Is Backend',
-            'created_at' => 'Created At',
-            'ip' => 'IP Address',
+            'user_agent_id' => 'User Agent',
             'session_id' => 'Session ID',
+            'backend' => 'Is Backend?',
+            'ip' => 'IP',
+            'created_at' => 'Created At',
         ];
     }
 
@@ -89,6 +91,7 @@ class UserLog extends \wmc\db\ActiveRecord
         return $this->hasOne(User::className(), ['person_id' => 'user_id']);
     }
 
+
     /**
      * @return \yii\db\ActiveQuery
      */
@@ -97,15 +100,33 @@ class UserLog extends \wmc\db\ActiveRecord
         return $this->hasOne(Session::className(), ['id' => 'session_id']);
     }
 
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getUserAgent()
+    {
+        return $this->hasOne(UserLogUserAgent::className(), ['id' => 'user_agent_id']);
+    }
+
     public static function add($actionTypeId, $userId = null) {
-        if (is_null($userId)) {
-            $userId = Yii::$app->user->id;
+        $userId = is_null($userId) ? Yii::$app->user->id : $userId;
+        $backend = Yii::$app instanceof \wma\web\Application ? 1 : 0;
+        if ($actionTypeId == self::RESET_PASSWORD_EXPIRED) {
+            $ip = NULL;
+            $sessionId = NULL;
+            $userAgentId = NULL;
+        } else {
+            $ip = inet_pton(Yii::$app->request->getUserIP());
+            $sessionId = Yii::$app->session->getId();
+            $userAgentId = UserLogUserAgent::getUserAgentId(Yii::$app->request->getUserAgent());
         }
         $userLog = new UserLog();
         $userLog->user_id = $userId;
         $userLog->action_type = $actionTypeId;
-        $userLog->ip = inet_pton(Yii::$app->request->getUserIP());
-        $userLog->session_id = Yii::$app->session->getId();
+        $userLog->user_agent_id = $userAgentId;
+        $userLog->ip = $ip;
+        $userLog->session_id = $sessionId;
+        $userLog->backend = $backend;
         $userLog->save();
     }
 }

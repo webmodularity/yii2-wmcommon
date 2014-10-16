@@ -4,6 +4,8 @@ namespace wmc\models;
 
 use Yii;
 use yii\base\Model;
+use wmc\models\UserLogFailed;
+
 /**
  * Login form
  */
@@ -50,11 +52,22 @@ class LoginForm extends Model
     {
         if (!$this->hasErrors()) {
             $user = $this->getUser();
-            if (!$user || !$user->validatePassword($this->password)) {
-                $this->addError('password', 'Incorrect username or password.');
-                $this->password = '';
-                $this->addError('username', 'Incorrect username or password.');
-                $this->username = '';
+            if (!$user) {
+                UserLogFailed::add(
+                    UserLogFailed::ACTION_LOGIN,
+                    UserLogFailed::REASON_BAD_USERNAME,
+                    null,
+                    $this->username
+                );
+                $this->invalidLogin();
+            } else if (!$user->validatePassword($this->password)) {
+                UserLogFailed::add(
+                    UserLogFailed::ACTION_LOGIN,
+                    UserLogFailed::REASON_BAD_PASSWORD,
+                    $user->person_id,
+                    null
+                );
+                $this->invalidLogin();
             }
         }
     }
@@ -88,5 +101,11 @@ class LoginForm extends Model
         if (is_int($seconds) && $seconds >= 0) {
             $this->_sessionDuration = $seconds;
         }
+    }
+
+    public function invalidLogin() {
+        $this->username = $this->password = '';
+        $this->addError('password', 'Unrecognized username/password combination.');
+        $this->addError('username', 'Unrecognized username/password combination.');
     }
 }
