@@ -12,7 +12,7 @@ class Formatter extends \yii\i18n\Formatter
         return self::asDate($date, "php:Y-m-d");
     }
 
-    public function asBinaryIp($ip) {
+    public function asBinaryIP($ip) {
         $inetPton = inet_pton($ip);
         return $inetPton === false ? null : $inetPton;
     }
