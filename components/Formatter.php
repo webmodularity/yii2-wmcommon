@@ -13,7 +13,7 @@ class Formatter extends \yii\i18n\Formatter
     }
 
     public function asBinaryIP($ip) {
-        $inetPton = inet_pton($ip);
+        $inetPton = @inet_pton($ip);
         return $inetPton === false ? null : $inetPton;
     }
 
