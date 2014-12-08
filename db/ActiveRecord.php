@@ -2,9 +2,6 @@
 
 namespace wmc\db;
 
-use Yii;
-use yii\helpers\StringHelper;
-
 class ActiveRecord extends \yii\db\ActiveRecord
 {
 
@@ -33,13 +30,6 @@ class ActiveRecord extends \yii\db\ActiveRecord
             }
         }
         return $model;
-    }
-
-    /* Validators */
-
-    public function truncate($attribute, $params) {
-        $length = isset($params['length']) ? $params['length'] : 255;
-        $this->$attribute = StringHelper::truncate($this->$attribute, $length, '');
     }
 
 }
