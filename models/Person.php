@@ -25,7 +25,7 @@ class Person extends \wmc\db\ActiveRecord
      */
     public static function tableName()
     {
-        return 'person';
+        return '{{person}}';
     }
 
     /**
@@ -35,7 +35,7 @@ class Person extends \wmc\db\ActiveRecord
     {
         return [
             [['email', 'first_name', 'last_name'], 'trim'],
-            [['email', 'first_name', 'last_name'], 'required'],
+            [['email'], 'required'],
             [['email'], 'string', 'max' => 100],
             ['email', 'email'],
             [['address_id'], 'integer'],
