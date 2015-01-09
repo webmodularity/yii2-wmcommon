@@ -12,11 +12,24 @@ class AddressForm extends Widget
 {
     public $form = null;
     public $model = null;
+    public $countryId = 1;
+
+    public $stateList = [];
+    public $statePrompt = 'State';
+    public $stateDropDownOptions = [];
+
 
     public function init() {
         if (!isset($this->form) || !isset($this->model)) {
             throw new InvalidConfigException("AddressForm widget requires a valid form and model connection!");
         }
+        if (empty($this->stateList)) {
+            $this->stateList = AddressState::getStateList($this->countryId);
+        }
+        if (!isset($this->stateDropDownOptions['prompt'])) {
+            $this->stateDropDownOptions['prompt'] = $this->statePrompt;
+        }
+
     }
 
     public function run() {
@@ -40,7 +53,7 @@ class AddressForm extends Widget
                 $this->form->field($this->model, 'city')->textInput(['maxlength' => 255,  'placeholder' => 'City']),
                 ['class' => "col-xs-12 col-md-5"])
             . Html::tag('div',
-                $this->form->field($this->model, 'state')->dropDownList(AddressState::getStateList(),['prompt' => 'State']),
+                $this->form->field($this->model, 'state_id')->dropDownList($this->stateList,$this->stateDropDownOptions),
                 ['class' => "col-xs-12 col-sm-4 col-md-3"])
             . Html::tag('div',
                 $this->form->field($this->model, 'zip')->textInput(['maxlength' => 20, 'placeholder' => 'Zip']),

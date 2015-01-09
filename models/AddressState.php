@@ -71,15 +71,27 @@ class AddressState extends \wmc\db\ActiveRecord
         return null;
     }
 
+    public static function findIdFromName($name, $countryId) {
+        if (is_string($name) && is_int($countryId) && $countryId > 0) {
+            $state = static::findOne(['country_id' => $countryId, 'name' => $name]);
+            if (!is_null($state)) {
+                return $state->id;
+            } else {
+                return null;
+            }
+        }
+        return null;
+    }
+
     public static function getStateList($countryId = 1, $iso = true) {
         $display = $iso === true ? 'iso' : 'name';
         return ArrayHelper::map(
             static::find()
-                ->select(['iso', $display])
+                ->select(['id', $display])
                 ->andWhere(['country_id' => $countryId])
                 ->orderBy('id ASC')
                 ->asArray()
                 ->all(),
-            'iso', $display);
+            'id', $display);
     }
 }

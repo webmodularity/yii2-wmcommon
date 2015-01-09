@@ -92,4 +92,22 @@ class AddressCountry extends \wmc\db\ActiveRecord
         }
         return null;
     }
+
+    public static function findIdFromName($name) {
+        if (is_string($name)) {
+            if (strtolower($name) == 'united states') {
+                return 1;
+            } else if (strtolower($name) == 'canada') {
+                return 2;
+            } else {
+                $country = static::findOne(['name' => $name]);
+                if (!is_null($country)) {
+                    return $country->id;
+                } else {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
 }

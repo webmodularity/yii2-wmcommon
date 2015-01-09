@@ -3,10 +3,6 @@
 namespace wmc\models;
 
 use Yii;
-use wmc\models\AddressCountry;
-use wmc\models\AddressState;
-use wmc\models\AddressLocation;
-use wmc\models\AddressStreet;
 use yii\db\IntegrityException;
 
 /**
@@ -15,19 +11,18 @@ use yii\db\IntegrityException;
  * @property integer $id
  * @property string $street1
  * @property string $street2
+ * @property integer $location_id
  * @property string $city
  * @property string $zip
- * @property string $state
- * @property string $country
+ * @property integer $state_id
+ * @property string $state_name
+ * @property string $state_iso
+ * @property integer $country_id
+ * @property string $country_name
+ * @property string $country_iso
  */
 class Address extends \wmc\db\ActiveRecord
 {
-    private $_countryId;
-    private $_stateId;
-    private $_locationId;
-
-    const DEFAULT_COUNTRY = 'US';
-
     const TYPE_PRIMARY = 1;
     const TYPE_SHIPPING = 2;
     const TYPE_BILLING = 3;
@@ -51,16 +46,19 @@ class Address extends \wmc\db\ActiveRecord
     {
 
         return [
-            [['street1', 'street2', 'city', 'state', 'zip'], 'trim'],
-            [['street1', 'city', 'state', 'zip'], 'required'],
+            [['street1', 'street2', 'city', 'state_iso', 'state_name', 'zip', 'country_iso', 'country_name'], 'trim'],
+            [['street1', 'city', 'state_id', 'zip'], 'required'],
             [['street1', 'street2', 'city'], 'string', 'max' => 255],
             [['zip'], 'string', 'max' => 20],
-            [['state', 'country'], 'string', 'max' => 2],
-            [['country'], 'validateCountry', 'skipOnEmpty' => false],
-            [['state'], 'validateState'],
-            [['zip'], 'validateZip'],
-            [['city'], 'validateCity'],
-            [['street1', 'street2'], 'validateStreet']
+            [['country_name'], 'string', 'max' => 50],
+            [['state_name'], 'string', 'max' => 75],
+            [['state_iso', 'country_iso'], 'string', 'max' => 2],
+            [['location_id', 'state_id', 'country_id'], 'integer'],
+            [['location_id', 'state_id', 'country_id'], 'filter', 'filter' => 'intval'],
+            [['country_id'], 'validateCountry', 'skipOnEmpty' => false],
+            [['state_id'], 'validateState', 'skipOnEmpty' => false],
+            [['location_id'], 'validateLocation', 'skipOnEmpty' => false],
+            [['street1', 'street2'], 'normalizeStreet', 'skipOnEmpty' => false]
             ];
     }
 
@@ -73,135 +71,144 @@ class Address extends \wmc\db\ActiveRecord
             'id' => 'ID',
             'street1' => 'Street1',
             'street2' => 'Street2',
+            'location_id' => 'Location ID',
             'city' => 'City',
             'zip' => 'Zip',
-            'state' => 'State',
-            'country' => 'Country'
+            'state__id' => 'State ID',
+            'state_iso' => 'State ISO',
+            'state_name' => 'State Name',
+            'country_id' => 'Country ID',
+            'country_iso' => 'Country ISO',
+            'country_name' => 'Country Name'
         ];
-    }
-
-    public function setCountryId($countryIso) {
-        $this->_countryId = AddressCountry::findIdFromIso($countryIso);
-    }
-
-    public function getCountryId() {
-        if (is_null($this->_countryId)) {
-            $countryIso = !empty($this->country) ? $this->country : static::DEFAULT_COUNTRY;
-            $this->setCountryId($countryIso);
-        }
-        return $this->_countryId;
-    }
-
-    public function setStateId($stateIso, $countryId) {
-        $this->_stateId = AddressState::findIdFromIso($stateIso, $countryId);
-    }
-
-    public function getStateId() {
-        if (is_null($this->_stateId)) {
-            $this->setStateId($this->state, $this->countryId);
-        }
-        return $this->_stateId;
-    }
-
-    public function setLocationId($city, $stateId, $zip) {
-        $location = AddressLocation::findOne(
-            [
-                'city' => $city,
-                'state_id' => $stateId,
-                'zip' => $zip
-            ]
-        );
-        if (!is_null($location)) {
-            $this->_locationId = $location->id;
-        }
-    }
-
-    public function getLocationId() {
-        if (is_null($this->_locationId)) {
-            $this->setLocationId($this->city, $this->getStateId(), $this->zip);
-        }
-        return $this->_locationId;
     }
 
     public function getOneLine() {
         $street = !empty($this->street2) ? $this->street1 . ',' . $this->street2 : $this->street1;
-        return $street . ',' . $this->city . ',' . $this->state . ',' . $this->zip;
+        return $street . ',' . $this->city . ',' . $this->state_iso . ',' . $this->zip;
     }
 
     public function validateCountry($attribute, $params) {
-        $this->$attribute = strtoupper($this->$attribute);
-        if (!$this->getCountryId()) {
-            $this->addError($attribute, 'Unrecognized country!');
+        $countryId = null;
+        if (empty($this->country_id)) {
+            if (empty($this->country_name) && empty($this->country_iso)) {
+                // Lets pull country info from $this->state_id
+                if (!empty($this->state_id)) {
+                    $state = AddressState::findOne($this->state_id);
+                     if (!is_null($state)) {
+                         $countryId = $state->country_id;
+                         $this->setAttribute('country_id', $countryId);
+                     }
+                }
+            } else {
+                $countryId = !empty($this->country_iso)
+                    ? AddressCountry::findIdFromIso($this->country_iso)
+                    : AddressCountry::findIdFromName($this->country_name);
+                if (!is_null($countryId)) {
+                    $this->setAttribute('country_id', $countryId);
+                }
+            }
+        } else {
+            // Verify country_id points to a valid country
+            $country = AddressCountry::findOne($this->country_id);
+            if (!is_null($country) && $country->id == $this->country_id) {
+                $countryId = $country->id;
+            }
+        }
+
+        if (is_null($countryId)) {
+            $this->addError($attribute, 'Unrecognized Country!');
         }
     }
 
     public function validateState($attribute, $params) {
-        $this->$attribute = strtoupper($this->$attribute);
-        if (!$this->getStateId()) {
-            $this->addError($attribute, 'Unrecognized state!');
-        }
-    }
-
-    public function validateZip($attribute, $params) {
-        if (empty($this->_countryId)) {
-            $this->addError($attribute, 'Unable to validate zip - country not set!');
-        } else {
-            $normalizedZip = AddressLocation::normalizeZip($this->$attribute, $this->_countryId);
-            if ($normalizedZip === false) {
-                $this->addError($attribute, 'Invalid zip code!');
+        $stateId = null;
+        if (!empty($this->country_id)) {
+            if (empty($this->state_id)) {
+                $stateId = !empty($this->state_iso)
+                    ? AddressState::findIdFromIso($this->state_iso, $this->country_id)
+                    : AddressState::findIdFromName($this->state_name, $this->country_id);
+                if (!is_null($stateId)) {
+                    $this->setAttribute('state_id', $stateId);
+                }
             } else {
-                $this->$attribute = $normalizedZip;
+                // Verify state_id points to a valid state (in specified country)
+                $state = AddressState::findOne(['country_id' => $this->country_id, 'id' => $this->state_id]);
+                if (!is_null($state) && $state->id == $this->state_id) {
+                    $stateId = $state->id;
+                }
             }
         }
+
+        if (is_null($stateId)) {
+            $this->addError($attribute, 'Unrecognized State!');
+        }
     }
 
-    public function validateCity($attribute, $params) {
-        $this->$attribute = AddressLocation::normalizeCity($this->$attribute, $this->_countryId);
+    public function validateLocation($attribute, $params) {
+        $locationId = null;
+        $normalizedZip = AddressLocation::normalizeZip($this->zip, $this->country_id);
+        if ($normalizedZip !== false) {
+            $this->zip = $normalizedZip;
+            $this->city = AddressLocation::normalizeCity($this->city, $this->country_id);
+            // Find Location or add one if doesn't exist
+            $location = AddressLocation::findOne([
+                'city' => $this->city,
+                'zip' => $this->zip,
+                'state_id' => $this->state_id
+            ]);
+            if (is_null($location)) {
+                $location = new AddressLocation();
+                $location->city = $this->city;
+                $location->state_id = $this->state_id;
+                $location->zip = $this->zip;
+                if ($location->save()) {
+                    $locationId = $location->id;
+                    $this->setAttribute('location_id', $locationId);
+                }
+            } else {
+                $locationId = $location->id;
+                $this->setAttribute('location_id', $locationId);
+            }
+        }
+
+        if ($normalizedZip === false) {
+            $this->addError('zip', 'Invalid zip code!');
+        } else if (is_null($locationId)) {
+            $this->addError($attribute, 'Invalid city/state/zip combo!');
+        }
     }
 
-    public function validateStreet($attribute, $params) {
-        $this->$attribute = AddressStreet::normalizeStreet($this->$attribute, $this->_countryId);
+    public function normalizeStreet($attribute, $params) {
+        $this->$attribute = AddressStreet::normalizeStreet($this->$attribute, $this->country_id);
     }
 
     /**
      * @inheritdoc
      */
     protected function insertInternal($attributes = null) {
-
         if (!$this->beforeSave(true)) {
             return false;
         }
 
         $values = $this->getDirtyAttributes($attributes);
 
-        // Find Location or add one if doesn't exist
-        $locationId = $this->getLocationId();
-        if (is_null($locationId)) {
-            if (!$this->addLocation()) {
-                Yii::info('Failed to save address location.');
-                return false;
-            } else {
-                $locationId = $this->getLocationId();
-            }
-        }
-
         // Make sure we don't already have an address record
-        $street = AddressStreet::findOne(
-            [
-                'street1' => $values['street1'],
-                'street2' => $values['street2'],
-                'location_id' => $locationId
-            ]
-        );
+        $street = AddressStreet::findOne([
+                'street1' => $this->street1,
+                'street2' => $this->street2,
+                'location_id' => $this->location_id
+        ]);
         if (!is_null($street)) {
             // Record already exists
             Yii::info('Address already exists.');
             return false;
         }
+
         $street = new AddressStreet();
-        $street->street1 = $values['street1'];
-        $street->street2 = $values['street2'];
-        $street->location_id = $locationId;
+        $street->street1 = $this->street1;
+        $street->street2 = $this->street2;
+        $street->location_id = $this->location_id;
         if (!$street->save()) {
             Yii::info('Failed to save street address.');
             return false;
@@ -216,59 +223,60 @@ class Address extends \wmc\db\ActiveRecord
         return true;
     }
 
-    protected function updateInternal($attributes = null)
-    {
-
+    protected function updateInternal($attributes = null) {
         if (!$this->beforeSave(false)) {
             return false;
         }
         $values = $this->getDirtyAttributes($attributes);
+        $streetValues = [];
 
         if (empty($values)) {
             $this->afterSave(false, $values);
             return 0;
         }
 
-        $location = null;
-        $streetValues = [];
+        // Disallow country change
+        if (in_array('country_id', array_keys($values))) {
+            return false;
+        }
+
+        // Ensure state change stays within same country
+        if (in_array('state_id', array_keys($values))) {
+            $stateCountry = AddressState::findOne($values['state_id']);
+            if (is_null($stateCountry) || $stateCountry->country_id != $this->country_id) {
+                return false;
+            }
+        }
+
+        // Handle location_id changes
+        if (in_array('location_id', array_keys($values))) {
+            $streetValues['location_id'] = $values['location_id'];
+        }
+
+        // Catch street1/street2 changes
         foreach ($values as $key => $val) {
-            if (in_array($key, ['city', 'state', 'zip'])) {
-                // Find Location or add one if doesn't exist
-                $locationId = $this->getLocationId();
-                if (is_null($locationId)) {
-                    if (!$this->addLocation()) {
-                        return 0;
-                    } else {
-                        $locationId = $this->getLocationId();
-                    }
-                }
-
-                $streetValues['location_id'] = $locationId;
-                break;
+            if (in_array($key, ['street1', 'street2'])) {
+                $streetValues[$key] = $val;
             }
         }
 
-        foreach (['street1', 'street2'] as $st) {
-            if (isset($values[$st])) {
-                $streetValues[$st] = $values[$st];
-            }
-        }
-
-        // Check if we have a matching record
-        $existingStreet = AddressStreet::findOne([
+        // Check if we have an existing record
+        $existingAddress = AddressStreet::findOne([
             'street1' => $this->street1,
             'street2' => $this->street2,
-            'location_id' => $this->getLocationId()
+            'location_id' => $this->location_id
         ]);
-        if (is_null($existingStreet)) {
+
+        if (is_null($existingAddress)) {
             $rows = AddressStreet::updateAll($streetValues, ['id' => $this->id]);
         } else {
             $thisStreet = AddressStreet::findOne($this->id);
-            $rows = static::mergeRedundantRecord($thisStreet, $existingStreet);
+            $rows = static::mergeRedundantRecord($thisStreet, $existingAddress);
             $this->setOldAttribute('id', $this->id);
-            $this->id = $existingStreet->id;
+            $this->id = $existingAddress->id;
         }
 
+        $this->doLocationGc();
         $changedAttributes = [];
         foreach ($values as $name => $value) {
             $changedAttributes[$name] = $this->getOldAttribute($name) ? $this->getOldAttribute($name) : null;
@@ -295,21 +303,18 @@ class Address extends \wmc\db\ActiveRecord
             throw new StaleObjectException('The object being deleted is outdated.');
         }
 
+        $this->doLocationGc();
         $this->setOldAttributes(null);
         $this->afterDelete();
         return $result;
     }
 
-    protected function addLocation() {
-        $location = new AddressLocation();
-        $location->city = $this->city;
-        $location->state_id = $this->getStateId();
-        $location->zip = $this->zip;
-        return $location->save();
-    }
-
-    protected function getAddressStreet() {
-
+    protected function doLocationGc() {
+        $db = static::getDb();
+        $db->createCommand("DELETE address_location FROM address_location
+                            LEFT JOIN address_street ON address_street.location_id = address_location.id
+                            WHERE address_street.id IS NULL")
+            ->execute();
     }
 
 }
