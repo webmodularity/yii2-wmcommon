@@ -19,6 +19,7 @@ use Yii;
  */
 class Person extends \wmc\db\ActiveRecord
 {
+    public $email_confirm;
     /**
      * @inheritdoc
      */
@@ -37,7 +38,10 @@ class Person extends \wmc\db\ActiveRecord
             [['email'], 'required'],
             [['email'], 'string', 'max' => 255],
             [['email'], 'email'],
-            [['email'], 'unique']
+            [['email_confirm'], 'email', 'on' => 'register'],
+            [['email'], 'unique'],
+            [['email_confirm'], 'required', 'on' => 'register'],
+            [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Emails do not match.',  'on' => 'register'],
         ];
     }
 
@@ -48,7 +52,8 @@ class Person extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'email' => 'Email'
+            'email' => 'Email',
+            'email_confirm' => 'Confirm Email'
         ];
     }
 

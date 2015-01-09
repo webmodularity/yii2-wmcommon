@@ -83,12 +83,19 @@ class AddressState extends \wmc\db\ActiveRecord
         return null;
     }
 
-    public static function getStateList($countryId = 1, $iso = true) {
-        $display = $iso === true ? 'iso' : 'name';
+    public static function getStateList($fullName = false, $countryId = null, $stateIdList = []) {
+        $display = $fullName === true ? 'name' : 'iso';
+        if (is_array($stateIdList) && !empty($stateIdList)) {
+            $where = ['id' => $stateIdList];
+        } else {
+            $countryId = empty($countryId) ? 1 : $countryId;
+            $where = ['country_id' => $countryId];
+        }
+
         return ArrayHelper::map(
             static::find()
                 ->select(['id', $display])
-                ->andWhere(['country_id' => $countryId])
+                ->andWhere($where)
                 ->orderBy('id ASC')
                 ->asArray()
                 ->all(),

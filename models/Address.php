@@ -23,6 +23,8 @@ use yii\db\IntegrityException;
  */
 class Address extends \wmc\db\ActiveRecord
 {
+    const LOCATION_GC_FREQ = 10;
+
     const TYPE_PRIMARY = 1;
     const TYPE_SHIPPING = 2;
     const TYPE_BILLING = 3;
@@ -69,15 +71,15 @@ class Address extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'street1' => 'Street1',
-            'street2' => 'Street2',
-            'location_id' => 'Location ID',
+            'street1' => 'Street Address',
+            'street2' => 'Address Line 2',
+            'location_id' => 'Location',
             'city' => 'City',
             'zip' => 'Zip',
-            'state__id' => 'State ID',
+            'state_id' => 'State',
             'state_iso' => 'State ISO',
             'state_name' => 'State Name',
-            'country_id' => 'Country ID',
+            'country_id' => 'Country',
             'country_iso' => 'Country ISO',
             'country_name' => 'Country Name'
         ];
@@ -310,11 +312,14 @@ class Address extends \wmc\db\ActiveRecord
     }
 
     protected function doLocationGc() {
-        $db = static::getDb();
-        $db->createCommand("DELETE address_location FROM address_location
-                            LEFT JOIN address_street ON address_street.location_id = address_location.id
-                            WHERE address_street.id IS NULL")
-            ->execute();
+        if (mt_rand(1,100) <= static::LOCATION_GC_FREQ) {
+            $db = static::getDb();
+            $db->createCommand("DELETE address_location FROM address_location
+                    LEFT JOIN address_street ON address_street.location_id = address_location.id
+                    WHERE address_street.id IS NULL"
+            )
+                ->execute();
+        }
     }
 
 }
