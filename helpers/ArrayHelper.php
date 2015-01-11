@@ -28,13 +28,12 @@ class ArrayHelper extends \yii\helpers\ArrayHelper
             }
         }
         if (!isset($classA['class']) || !isset($classB['class'])) {
-            // No class meging needed
+            // No class merging needed
             return parent::merge($a, $b);
         } else {
             $classAList = explode(' ', parent::remove($classA, 'class'));
             $classBList = explode(' ', parent::remove($classB, 'class'));
             $classA['class'] = implode(' ', parent::merge($classAList, $classBList));
-            //die(var_dump($a));
             return parent::merge($a, $b);
         }
     }

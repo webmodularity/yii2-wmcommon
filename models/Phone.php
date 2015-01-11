@@ -20,7 +20,11 @@ class Phone extends \wmc\db\ActiveRecord
     const TYPE_DIRECT = 1;
     const TYPE_MOBILE = 2;
     const TYPE_OFFICE = 3;
-    const TYPE_FAX = 4;
+    const TYPE_HOME = 4;
+    const TYPE_FAX = 5;
+
+    public $full;
+    public $type_id;
 
     /**
      * @inheritdoc
@@ -36,6 +40,10 @@ class Phone extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
+            [['full'], 'required', 'on' => 'require', 'message' => 'Phone cannot be blank.'],
+            [['type_id'], 'required', 'on' => 'require', 'message' => 'Phone type cannot be blank.'],
+            [['full'], 'match', 'pattern' => '/^\([0-9]{3}\)[0-9]{3}\-[0-9]{4}$/', 'message' => 'Invalid phone format. Use: (999)999-9999'],
+            [['full'], 'convertFull'],
             [['area_code', 'number'], 'required'],
             [['area_code'], 'string', 'max' => 3],
             [['number'], 'string', 'max' => 7],
@@ -72,5 +80,17 @@ class Phone extends \wmc\db\ActiveRecord
     public function getPersonPhones()
     {
         return $this->hasMany(PersonPhone::className(), ['phone_id' => 'id']);
+    }
+
+    public function convertFull($attribute, $params) {
+        if (preg_match('/^\(([0-9]{3})\)([0-9]{3})\-([0-9]{4})$/', $this->$attribute, $match)) {
+            $this->area_code = $match[1];
+            $this->number = $match[2] . $match[3];
+        }
+    }
+
+    public function afterFind() {
+        $this->full = '(' . $this->area_code . ')' . substr($this->number, 0, 3) . '-' . substr($this->number, 3, 4);
+        parent::afterFind();
     }
 }
