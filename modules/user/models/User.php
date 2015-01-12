@@ -1,20 +1,19 @@
 <?php
 
-namespace wmu\models;
+namespace wmc\modules\user\models;
 
 use Yii;
 use yii\web\IdentityInterface;
-use yii\helpers\ArrayHelper;
 use yii\behaviors\TimestampBehavior;
 
 /**
- * This is the model class for table "user".
+ * This is the model class for table "{{%user}}".
  *
+ * @property integer $id
  * @property integer $person_id
  * @property string $username
  * @property string $password
  * @property integer $role_id
- * @property string $auth_key
  * @property integer $status
  * @property string $created_at
  * @property string $updated_at
@@ -22,6 +21,7 @@ use yii\behaviors\TimestampBehavior;
  * @property UserRole $role
  * @property Person $person
  * @property UserKey[] $userKeys
+ * @property UserLog[] $userLogs
  */
 class User extends \wmc\db\ActiveRecord implements IdentityInterface
 {
@@ -30,11 +30,17 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
     const STATUS_NEW = 0;
 
     const ROLE_USER = 1;
+    const ROLE_ADMIN = 100;
     const ROLE_SUPERADMIN = 255;
+
+    public $password_confirm;
 
     public function behaviors() {
         return [
-            TimestampBehavior::className()
+            [
+                'class' => TimestampBehavior::className(),
+                'value' => new \yii\db\Expression('NOW()')
+            ]
         ];
     }
 
@@ -43,7 +49,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public static function tableName()
     {
-        return 'user';
+        return '{{%user}}';
     }
 
     /**
@@ -52,12 +58,19 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
     public function rules()
     {
         return [
-            [['role_id', 'status', 'person_id'], 'integer'],
-            [['status'], 'in', 'range' => range(self::STATUS_DELETED, self::STATUS_ACTIVE)],
-            [['role_id'], 'in', 'range' => range(self::ROLE_USER, self::ROLE_SUPERADMIN)],
-            [['person_id', 'role_id', 'status', 'created_at', 'auth_key'], 'required'],
-            [['password'], 'string', 'max' => 255],
-            [['username'], 'unique']
+            [['role_id', 'status', 'person_id'], 'integer', 'except' => ['register', 'register-username']],
+            [['username', 'password','password_confirm'], 'trim'],
+            [['status'], 'in', 'range' => range(self::STATUS_DELETED, self::STATUS_ACTIVE), 'except' => ['register', 'register-username']],
+            [['role_id'], 'in', 'range' => range(self::ROLE_USER, self::ROLE_SUPERADMIN), 'except' => ['register', 'register-username']],
+            [['role_id', 'status', 'person_id', 'password'], 'required', 'except' => ['register', 'register-username']],
+            [['password', 'password_confirm'], 'required', 'on' => ['register', 'register-username']],
+            [['password', 'password_confirm'], 'string', 'length' => [5, 100], 'on' => ['register', 'register-username']],
+            [['username'], 'string', 'length' => [3, 50], 'on' => 'register-username'],
+            [['username'], 'unique', 'on' => 'register-username'],
+            [['username'], 'required', 'on' => 'register-username'],
+            [['username'], 'match', 'pattern' => '/^[A-Za-z0-9_]+$/u', 'message' => "{attribute} can contain only letters, numbers or underscores.", 'on' => ['register-username']],
+            [['username'], 'unique', 'targetClass' => '\wmu\models\User', 'message' => 'This username is already in use.', 'on' => ['register-username']],
+            [['password_confirm'], 'compare', 'compareAttribute' => 'password', 'message' => 'Passwords do not match.', 'on' => ['register', 'register-username']]
         ];
     }
 
@@ -67,11 +80,12 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
     public function attributeLabels()
     {
         return [
-            'person_id' => 'ID',
+            'id' => 'ID',
+            'person_id' => 'Person',
             'username' => 'Username',
             'password' => 'Password',
-            'role_id' => 'Role ID',
-            'auth_key' => 'Auth Key',
+            'password_confirm' => 'Confirm Password',
+            'role_id' => 'Role',
             'status' => 'Status',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
@@ -91,7 +105,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public function getPerson()
     {
-        return $this->hasOne(\wmc\models\Person::className(), ['id' => 'person_id']);
+        return $this->hasOne(Person::className(), ['id' => 'person_id']);
     }
 
     /**
@@ -99,7 +113,15 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public function getUserKeys()
     {
-        return $this->hasMany(UserKey::className(), ['user_id' => 'person_id']);
+        return $this->hasMany(UserKey::className(), ['user_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getUserLogs()
+    {
+        return $this->hasMany(UserLog::className(), ['user_id' => 'id']);
     }
 
     /**
@@ -107,7 +129,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public static function findIdentity($id)
     {
-        return static::findOne(['person_id' => $id, 'status' => self::STATUS_ACTIVE]);
+        return static::findOne(['id' => $id, 'status' => self::STATUS_ACTIVE]);
     }
     /**
      * @inheritdoc
@@ -124,7 +146,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public static function findByUsername($username)
     {
-        return static::find()->where(['username' => $username, 'status' => self::STATUS_ACTIVE])->joinWith('person')->one();
+        return static::findOne(['username' => $username, 'status' => self::STATUS_ACTIVE]);
     }
     /**
      * Finds user by email
@@ -134,7 +156,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public static function findByEmail($email)
     {
-        return static::find()->where(['email' => $email, 'status' => self::STATUS_ACTIVE])->joinWith('person')->one();
+        return static::find()->where(['person.email' => $email, 'status' => self::STATUS_ACTIVE])->joinWith('person')->one();
     }
     /**
      * Finds user by password reset token
@@ -160,6 +182,25 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
         */
     }
     /**
+     * Validates password
+     *
+     * @param string $password password to validate
+     * @return boolean if password provided is valid for current user
+     */
+    public function validatePassword($password)
+    {
+        return Yii::$app->security->validatePassword($password, $this->password);
+    }
+    /**
+     * Generates password hash from password and sets it to the model
+     *
+     * @param string $password
+     */
+    public function setPassword($password)
+    {
+        $this->password = Yii::$app->security->generatePasswordHash($password);
+    }
+    /**
      * @inheritdoc
      */
     public function getId()
@@ -181,29 +222,11 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
         return $this->getAuthKey() === $authKey;
     }
     /**
-     * Validates password
-     *
-     * @param string $password password to validate
-     * @return boolean if password provided is valid for current user
-     */
-    public function validatePassword($password)
-    {
-        return Yii::$app->security->validatePassword($password, $this->password);
-    }
-    /**
-     * Generates password hash from password and sets it to the model
-     *
-     * @param string $password
-     */
-    public function setPassword($password)
-    {
-        $this->password = Yii::$app->security->generatePasswordHash($password);
-    }
-    /**
      * Generates "remember me" authentication key
      */
     public function generateAuthKey()
     {
+        throw new NotSupportedException('generateAuthKey() is not implemented.');
         $this->auth_key = Yii::$app->security->generateRandomString();
     }
     /**

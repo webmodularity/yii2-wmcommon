@@ -41,6 +41,7 @@ class Phone extends \wmc\db\ActiveRecord
     {
         return [
             [['full'], 'required', 'on' => 'require', 'message' => 'Phone cannot be blank.'],
+            [['type_id'], 'integer'],
             [['type_id'], 'required', 'on' => 'require', 'message' => 'Phone type cannot be blank.'],
             [['full'], 'match', 'pattern' => '/^\([0-9]{3}\)[0-9]{3}\-[0-9]{4}$/', 'message' => 'Invalid phone format. Use: (999)999-9999'],
             [['full'], 'convertFull'],
@@ -92,5 +93,29 @@ class Phone extends \wmc\db\ActiveRecord
     public function afterFind() {
         $this->full = '(' . $this->area_code . ')' . substr($this->number, 0, 3) . '-' . substr($this->number, 3, 4);
         parent::afterFind();
+    }
+
+    /**
+     * Creates an array suitable for dropDownLists, etc.
+     * @param array $typeIds An array of type ids that should be included in results, results will stay ordered
+     * @return array A list of all the defined phone types keyed by the type ID
+     */
+
+    public static function getTypeList($typeIds = []) {
+        $allTypes = $types = [];
+        $reflection = new \ReflectionClass(self::className());
+        foreach ($reflection->getConstants() as $key => $val) {
+            if (substr($key, 0, 5) == 'TYPE_') {
+                $allTypes[$val] = ucwords(strtolower(substr($key, 5)));
+            }
+        }
+        if (!empty($typeIds)) {
+            foreach ($typeIds as $typeId) {
+                $types[$typeId] = $allTypes[$typeId];
+            }
+        } else {
+            $types = $allTypes;
+        }
+        return $types;
     }
 }

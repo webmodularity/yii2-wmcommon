@@ -4,16 +4,9 @@ namespace wmc\widgets\form;
 
 use Yii;
 use wmc\helpers\Html;
-use yii\base\InvalidConfigException;
 
 class Phone extends FormWidget
 {
-
-    protected $_typeValues = [
-        \wmc\models\Phone::TYPE_MOBILE => 'Mobile',
-        \wmc\models\Phone::TYPE_HOME => 'Home',
-        \wmc\models\Phone::TYPE_OFFICE => 'Office'
-    ];
 
     public function init() {
         parent::init();
@@ -30,7 +23,12 @@ class Phone extends FormWidget
                 )->label(false),
                 ['class' => 'col-sm-6'])
             . Html::tag('div',
-                $this->form->field($this->model, 'type_id')->dropDownList($this->_typeValues, ['prompt' => 'Phone Type...'])->label(false),
+                $this->form->field($this->model, 'type_id')->dropDownList(\wmc\models\Phone::getTypeList([
+                        \wmc\models\Phone::TYPE_MOBILE,
+                        \wmc\models\Phone::TYPE_HOME,
+                        \wmc\models\Phone::TYPE_OFFICE
+                    ]
+                ), ['prompt' => 'Phone Type...'])->label(false),
                 ['class' => 'col-sm-6']),
             ['class' => 'row']);
     }

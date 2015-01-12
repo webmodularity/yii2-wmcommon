@@ -3,6 +3,7 @@
 namespace wmc\models;
 
 use Yii;
+use wmc\models\Phone;
 
 /**
  * This is the model class for table "{{%person_phone}}".
@@ -31,7 +32,12 @@ class PersonPhone extends \wmc\db\ActiveRecord
     {
         return [
             [['person_id', 'phone_id', 'phone_type_id'], 'required'],
-            [['person_id', 'phone_id', 'phone_type_id'], 'integer']
+            [['person_id', 'phone_id', 'phone_type_id'], 'integer'],
+            ['phone_type_id', function ($attribute, $params) {
+                if (!in_array($this->$attribute, array_keys(Phone::getTypeList()))) {
+                    $this->addError($attribute, 'Unrecognized phone type.');
+                }
+            }, 'skipOnEmpty' => false]
         ];
     }
 

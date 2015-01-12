@@ -39,10 +39,32 @@ class Person extends \wmc\db\ActiveRecord
             [['email'], 'string', 'max' => 255],
             [['email'], 'email'],
             [['email_confirm'], 'email', 'on' => 'register'],
-            [['email'], 'unique'],
             [['email_confirm'], 'required', 'on' => 'register'],
             [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Emails do not match.',  'on' => 'register'],
         ];
+    }
+
+    public function afterSave($insert, $changedAttributes) {
+        if ($insert === true) {
+            // Check for personName relation or create new blank record
+            $personName = isset($this->personName) ? $this->personName : null;
+            if (is_null($personName)) {
+                $personName = new PersonName();
+            }
+            $personName->person_id = $this->id;
+            if ($personName->save()) {
+                $this->populateRelation('personName', $personName);
+            }
+        }
+        parent::afterSave($insert, $changedAttributes);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public static function find()
+    {
+        return parent::find()->joinWith('personName');
     }
 
     /**
@@ -103,5 +125,9 @@ class Person extends \wmc\db\ActiveRecord
     public function getPersonPhones()
     {
         return $this->hasMany(PersonPhone::className(), ['person_id' => 'id']);
+    }
+
+    public static function findByEmail($email) {
+        return static::findOne(['email' => $email]);
     }
 }

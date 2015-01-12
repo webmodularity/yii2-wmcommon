@@ -16,6 +16,18 @@ class ActiveRecord extends \yii\db\ActiveRecord
         return $this->findOne($this->getAttributes(null, $this->primaryKey()));
     }
 
+    public function findOneOrInsert($condition, $runValidation = true, $attributes = null) {
+        $find = static::findOne($condition);
+        if (is_null($find)) {
+            if ($this->insert($runValidation, $attributes)) {
+                return $this;
+            } else {
+                return null;
+            }
+        }
+        return $find;
+    }
+
     /**
      * ONLY WORKS WITH INNODB TABLES CURRENTLY
      * Merges $oldModel into $newModel by first finding all tables with a FK pointing to this table,
