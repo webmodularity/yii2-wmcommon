@@ -9,6 +9,7 @@ use wmc\models\AddressState;
 
 class Address extends FormWidget
 {
+    const DEFAULT_STATE_PROMPT = 'Select a State...';
 
     protected $_inputOptions = [
         'street1' => ['maxlength' => 255],
@@ -22,7 +23,6 @@ class Address extends FormWidget
     public $countryId;
     public $stateIdList = [];
     public $stateFullName = false;
-    public $statePrompt = 'Select a State...';
 
     protected $_labels = [
         'street1' => 'Street Address',
@@ -42,8 +42,8 @@ class Address extends FormWidget
         $this->_stateValues = AddressState::getStateList($this->stateFullName, $this->countryId, $this->stateIdList);
 
         // State Prompt
-        if (!isset($this->_inputOptions['state_id']['prompt']) && !is_null($this->statePrompt)) {
-            $this->_inputOptions['state_id']['prompt'] = $this->statePrompt;
+        if (!isset($this->_inputOptions['state_id']['prompt']) && !is_null($this->_inputOptions['state_id']['prompt'])) {
+            $this->_inputOptions['state_id']['prompt'] = static::DEFAULT_STATE_PROMPT;
         }
     }
 

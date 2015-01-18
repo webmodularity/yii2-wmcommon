@@ -60,6 +60,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
         return [
             [['role_id', 'status', 'person_id'], 'integer', 'except' => ['register', 'register-username']],
             [['username', 'password','password_confirm'], 'trim'],
+            [['username'], 'default', 'value' => null, 'except' => ['register-username']],
             [['status'], 'in', 'range' => range(self::STATUS_DELETED, self::STATUS_ACTIVE), 'except' => ['register', 'register-username']],
             [['role_id'], 'in', 'range' => range(self::ROLE_USER, self::ROLE_SUPERADMIN), 'except' => ['register', 'register-username']],
             [['role_id', 'status', 'person_id', 'password'], 'required', 'except' => ['register', 'register-username']],
