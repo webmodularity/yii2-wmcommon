@@ -35,9 +35,7 @@ class PersonName extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['person_id'], 'required', 'except' => ['register']],
             [['person_id', 'prefix_id', 'suffix_id'], 'integer'],
-            [['first_name', 'last_name'], 'required', 'on' => 'register'],
             [['first_name', 'middle_name', 'last_name', 'nickname'], 'string', 'max' => 255]
         ];
     }

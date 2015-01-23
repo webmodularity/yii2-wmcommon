@@ -15,10 +15,10 @@ class PersonName extends FormWidget
 
     public function run() {
         return Html::tag('div', Html::tag('div',
-            $this->form->field($this->model, 'first_name')->textInput(['placeholder' => 'First Name'])->label(false),
+            $this->form->field($this->model, 'first_name')->textInput(['placeholder' => 'First Name', 'required' => true])->label(false),
             ['class' => 'col-sm-6'])
         . Html::tag('div',
-            $this->form->field($this->model, 'last_name')->textInput(['placeholder' => 'Last Name'])->label(false),
+            $this->form->field($this->model, 'last_name')->textInput(['placeholder' => 'Last Name', 'required' => true])->label(false),
             ['class' => 'col-sm-6']),
             ['class' => 'row']);
     }

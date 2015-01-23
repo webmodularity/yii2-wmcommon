@@ -3,6 +3,7 @@
 namespace wmc\models;
 
 use Yii;
+use yii\base\Exception;
 
 /**
  * This is the model class for table "{{%person}}".
@@ -19,7 +20,6 @@ use Yii;
  */
 class Person extends \wmc\db\ActiveRecord
 {
-    public $email_confirm;
     /**
      * @inheritdoc
      */
@@ -38,33 +38,54 @@ class Person extends \wmc\db\ActiveRecord
             [['email'], 'required'],
             [['email'], 'string', 'max' => 255],
             [['email'], 'email'],
-            [['email_confirm'], 'email', 'on' => 'register'],
-            [['email_confirm'], 'required', 'on' => 'register'],
-            [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Emails do not match.',  'on' => 'register'],
         ];
     }
 
+    /**
+     * UPDATE NEEDS WORK
+     * @param bool $insert
+     * @param array $changedAttributes
+     */
+
     public function afterSave($insert, $changedAttributes) {
         if ($insert === true) {
-            // Check for personName relation or create new blank record
-            $personName = isset($this->personName) ? $this->personName : null;
-            if (is_null($personName)) {
-                $personName = new PersonName();
-            }
-            $personName->person_id = $this->id;
-            if ($personName->save()) {
-                $this->populateRelation('personName', $personName);
+            $this->personName->person_id = $this->id;
+            try {
+                $this->personName->save();
+            } catch (Exception $e) {
+
             }
         }
         parent::afterSave($insert, $changedAttributes);
     }
 
+    public function beforeValidate() {
+        if ($this->personName->validate() === false) {
+            return false;
+        }
+
+        return parent::beforeValidate();
+    }
+
     /**
      * @inheritdoc
      */
-    public static function find()
-    {
+    public static function find() {
         return parent::find()->joinWith('personName');
+    }
+
+    public function init() {
+        if ($this->isNewRecord) {
+            $this->populateRelation('personName', new PersonName());
+        }
+        parent::init();
+    }
+
+    public function load($data, $formName = null) {
+        // Load PersonName
+        $this->personName->load($data, $formName);
+
+        return parent::load($data, $formName);
     }
 
     /**
@@ -125,6 +146,14 @@ class Person extends \wmc\db\ActiveRecord
     public function getPersonPhones()
     {
         return $this->hasMany(PersonPhone::className(), ['person_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPhones()
+    {
+        return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
     public static function findByEmail($email) {

@@ -42,7 +42,7 @@ class Address extends FormWidget
         $this->_stateValues = AddressState::getStateList($this->stateFullName, $this->countryId, $this->stateIdList);
 
         // State Prompt
-        if (!isset($this->_inputOptions['state_id']['prompt']) && !is_null($this->_inputOptions['state_id']['prompt'])) {
+        if (array_key_exists('prompt', $this->_inputOptions['state_id']) === false) {
             $this->_inputOptions['state_id']['prompt'] = static::DEFAULT_STATE_PROMPT;
         }
     }

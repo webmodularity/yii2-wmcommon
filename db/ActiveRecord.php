@@ -3,6 +3,7 @@
 namespace wmc\db;
 
 use yii\base\InvalidConfigException;
+use yii\db\IntegrityException;
 
 class ActiveRecord extends \yii\db\ActiveRecord
 {
@@ -16,13 +17,22 @@ class ActiveRecord extends \yii\db\ActiveRecord
         return $this->findOne($this->getAttributes(null, $this->primaryKey()));
     }
 
+    /**
+     * @param $condition
+     * @param bool $runValidation
+     * @param null $attributes
+     * @return $this|static
+     * @throws \Exception
+     * @throws \yii\db\IntegrityException on failed insert
+     */
+
     public function findOneOrInsert($condition, $runValidation = true, $attributes = null) {
         $find = static::findOne($condition);
         if (is_null($find)) {
             if ($this->insert($runValidation, $attributes)) {
                 return $this;
             } else {
-                return null;
+                throw new \yii\db\IntegrityException("Failed to insert ".static::className()." record!");
             }
         }
         return $find;
@@ -80,4 +90,11 @@ class ActiveRecord extends \yii\db\ActiveRecord
         return $oldModel->delete();
     }
 
+    public function link($name, $model, $extraColumns = []) {
+        try {
+            parent::link($name, $model, $extraColumns);
+        } catch (IntegrityException $e) {
+            // Duplicate record, does it really matter?
+        }
+    }
 }

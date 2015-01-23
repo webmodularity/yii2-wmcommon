@@ -45,7 +45,7 @@ class Phone extends \wmc\db\ActiveRecord
             [['type_id'], 'required', 'on' => 'require', 'message' => 'Phone type cannot be blank.'],
             [['full'], 'match', 'pattern' => '/^\([0-9]{3}\)[0-9]{3}\-[0-9]{4}$/', 'message' => 'Invalid phone format. Use: (999)999-9999'],
             [['full'], 'convertFull'],
-            [['area_code', 'number'], 'required'],
+            [['area_code', 'number'], 'required', 'on' => 'require'],
             [['area_code'], 'string', 'max' => 3],
             [['number'], 'string', 'max' => 7],
             [['extension'], 'string', 'max' => 5],
@@ -81,6 +81,14 @@ class Phone extends \wmc\db\ActiveRecord
     public function getPersonPhones()
     {
         return $this->hasMany(PersonPhone::className(), ['phone_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPersons()
+    {
+        return $this->hasMany(Person::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['phone_id' => 'id']);
     }
 
     public function convertFull($attribute, $params) {

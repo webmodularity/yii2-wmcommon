@@ -49,7 +49,7 @@ class Address extends \wmc\db\ActiveRecord
 
         return [
             [['street1', 'street2', 'city', 'state_iso', 'state_name', 'zip', 'country_iso', 'country_name'], 'trim'],
-            [['street1', 'city', 'state_id', 'zip'], 'required'],
+            [['street1', 'city', 'state_id', 'zip'], 'required', 'on' => 'required'],
             [['street1', 'street2', 'city'], 'string', 'max' => 255],
             [['zip'], 'string', 'max' => 20],
             [['country_name'], 'string', 'max' => 50],
