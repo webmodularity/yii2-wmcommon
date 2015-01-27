@@ -26,8 +26,8 @@ class ActiveRecord extends \yii\db\ActiveRecord
      * @throws \yii\db\IntegrityException on failed insert
      */
 
-    public function findOneOrInsert($condition, $runValidation = true, $attributes = null) {
-        $find = static::findOne($condition);
+    public function findOneOrInsert($condition = null, $runValidation = true, $attributes = null) {
+        $find = is_null($condition) ? $this->findOneFromAttributes() : static::findOne($condition);
         if (is_null($find)) {
             if ($this->insert($runValidation, $attributes)) {
                 return $this;
