@@ -4,9 +4,32 @@ namespace wmc\db;
 
 use yii\base\InvalidConfigException;
 use yii\db\IntegrityException;
+use yii\helpers\Inflector;
 
 class ActiveRecord extends \yii\db\ActiveRecord
 {
+
+    public static function getReadableConstantList($prefix = '', $key = null) {
+        $reflection = new \ReflectionClass(static::className());
+        $constants = $reflection->getConstants();
+        $constantList = [];
+        foreach ($constants as $cName => $cVal) {
+            if (!empty($prefix)) {
+                if (substr($cName, 0, strlen($prefix)) != $prefix) {
+                    continue;
+                }
+                $humanized = Inflector::humanize(substr($cName, (strlen($prefix) - 1)));
+                if (!empty($key)) {
+                    if ($key == $cVal) {
+                        return $humanized;
+                    }
+                } else {
+                    $constantList[$cVal] = $humanized;
+                }
+            }
+        }
+        return !empty($key) ? null : $constantList;
+    }
 
     /**
      * Takes a full AR model with an unset PK and returns AR result if record is found
