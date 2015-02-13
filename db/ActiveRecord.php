@@ -8,6 +8,41 @@ use yii\helpers\Inflector;
 
 class ActiveRecord extends \yii\db\ActiveRecord
 {
+    /**
+     * Takes either a DateTime object, timestamp integer, or null (default) = time()
+     * Used for inserting Datetime strings into MySQL, assumes web server and MySQL server are in same timezone.
+     * @param $date \DateTime|integer|null Datetime or timestamp to format
+     * @return string Datetime string suitable for insert into MySQL DATETIME or TIMESTAMP column
+     */
+
+    public static function getMysqlDatetime($date = null) {
+        $date = empty($date) ? time() : $date;
+        return $date instanceof \DateTime ? $date->format('Y-m-d H:i:s') : date('Y-m-d H:i:s', $date);
+    }
+
+    /**
+     * Takes either a DateTime object, timestamp integer, or null (default) = time()
+     * Used for inserting Date strings into MySQL, assumes web server and MySQL server are in same timezone.
+     * @param $date \DateTime|integer|null Datetime or timestamp to format
+     * @return string Date string suitable for insert into MySQL DATE column
+     */
+
+    public static function getMysqlDate($date = null) {
+        $date = empty($date) ? time() : $date;
+        return $date instanceof \DateTime ? $date->format('Y-m-d') : date('Y-m-d', $date);
+    }
+
+    /**
+     * This function converts a human readable IPv4 or IPv6 address into an address family appropriate
+     * 32bit or 128bit binary structure. Suitable for MySQL VARBINARY(16) columns.
+     * @param $ip A human readable IPv4 or IPv6 address.
+     * @return null|string Returns the in_addr representation of the given ip or NULL if ip is invalid
+     */
+
+    public static function getBinaryIp($ip) {
+        $inetPton = inet_pton($ip);
+        return $inetPton === false ? null : $inetPton;
+    }
 
     public static function getReadableConstantList($prefix = '', $key = null) {
         $reflection = new \ReflectionClass(static::className());
