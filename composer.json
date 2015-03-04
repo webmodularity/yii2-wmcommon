@@ -11,8 +11,9 @@
         }
     ],
     "require": {
-        "rmrevin/yii2-fontawesome": "2.4.2",
-        "zelenin/yii2-recaptcha-widget": "*"
+        "rmrevin/yii2-fontawesome": "*",
+        "zelenin/yii2-recaptcha-widget": "*",
+	"creocoder/yii2-nested-sets": "*"
     },
     "autoload": {
         "psr-4": {
