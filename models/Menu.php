@@ -8,7 +8,6 @@ use Yii;
  * This is the model class for table "{{%menu}}".
  *
  * @property integer $id
- * @property string $name
  * @property string $icon_set
  *
  * @property MenuItem[] $menuItems
@@ -29,9 +28,7 @@ class Menu extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name'], 'required'],
-            [['name', 'icon_set'], 'string', 'max' => 255],
-            [['name'], 'unique']
+            [['icon_set'], 'string', 'max' => 255]
         ];
     }
 
@@ -42,7 +39,6 @@ class Menu extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'name' => 'Name',
             'icon_set' => 'Icon Set',
         ];
     }

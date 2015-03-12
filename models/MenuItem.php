@@ -11,11 +11,11 @@ use creocoder\nestedsets\NestedSetsBehavior;
  *
  * @property integer $id
  * @property integer $menu_id
- * @property string $name
  * @property integer $type
  * @property integer $lft
  * @property integer $rgt
  * @property integer $depth
+ * @property string $name
  * @property string $link
  * @property string $icon
  *
@@ -24,11 +24,13 @@ use creocoder\nestedsets\NestedSetsBehavior;
  */
 class MenuItem extends \wmc\db\ActiveRecord
 {
+    public $children = [];
+
     public function behaviors() {
         return [
             'tree' => [
                 'class' => NestedSetsBehavior::className(),
-                    'treeAttribute' => 'menu_id'
+                'treeAttribute' => 'menu_id'
             ],
         ];
     }
@@ -42,7 +44,7 @@ class MenuItem extends \wmc\db\ActiveRecord
 
     public static function find()
     {
-        return new MenuQuery(get_called_class());
+        return new MenuItemQuery(get_called_class());
     }
 
     /**
@@ -59,7 +61,7 @@ class MenuItem extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['menu_id', 'name'], 'required'],
+            [['menu_id'], 'required'],
             [['menu_id', 'type', 'lft', 'rgt', 'depth'], 'integer'],
             [['name', 'link', 'icon'], 'string', 'max' => 255]
         ];
@@ -73,11 +75,11 @@ class MenuItem extends \wmc\db\ActiveRecord
         return [
             'id' => 'ID',
             'menu_id' => 'Menu ID',
-            'name' => 'Name',
             'type' => 'Type',
             'lft' => 'Lft',
             'rgt' => 'Rgt',
             'depth' => 'Depth',
+            'name' => 'Name',
             'link' => 'Link',
             'icon' => 'Icon',
         ];
