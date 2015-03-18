@@ -4,6 +4,7 @@ namespace wmc\models;
 
 use Yii;
 use wmu\models\UserGroup;
+//use wmc\behaviors\NestedSetsBehavior;
 use creocoder\nestedsets\NestedSetsBehavior;
 
 /**
@@ -25,6 +26,11 @@ use creocoder\nestedsets\NestedSetsBehavior;
 class MenuItem extends \wmc\db\ActiveRecord
 {
     public $children = [];
+
+    const TYPE_MENU = 255;
+    const TYPE_LINK = 1;
+    const TYPE_HEADER = 10;
+    const TYPE_DIVIDER = 20;
 
     public function behaviors() {
         return [

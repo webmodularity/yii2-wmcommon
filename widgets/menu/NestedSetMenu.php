@@ -4,10 +4,8 @@ namespace wmc\widgets\menu;
 
 use Yii;
 use wmc\models\MenuItem;
-use yii\base\Exception;
 use yii\base\InvalidConfigException;
 use wmc\helpers\NestedSetHelper;
-use yii\helpers\VarDumper;
 
 class NestedSetMenu extends \yii\base\Widget
 {
@@ -31,29 +29,21 @@ class NestedSetMenu extends \yii\base\Widget
             throw new InvalidConfigException("Unable to locate root node of menu!");
         }
 
+        $userGroupId = Yii::$app->user->isGuest ? 0 : Yii::$app->user->identity->group_id;
         $this->_menu = $this->_rootNode->menu;
-        $this->mapMenuItems();
-
-        die(var_dump($this->_menuItems));
+        $menuItems = $this->_rootNode
+            ->children($this->childDepth)
+            ->andWhere(['user_group_id' => $userGroupId])
+            ->joinWith('userGroups')
+            ->all();
+        $this->_menuItems = NestedSetHelper::toHierarchy($menuItems);
     }
 
-    protected function mapMenuItems() {
-        $menuItems = $this->_rootNode->children($this->childDepth)->all();
-        NestedSetHelper::toMenuArray($menuItems);
-        $groupId = Yii::$app->user->isGuest() ? null : Yii::$app->user->identity->group_id;
-        $menuRootDepth = 1;
-        $menuItemKey = 0;
-        foreach ($menuItems as $key => $item) {
-            if ($item->depth == $menuRootDepth) {
-                $menuItemKey = $menuItemKey == 0 ? 0 : $menuItemKey + 1;
-                $this->menuItems[$menuItemKey] = $item;
-            } else {
-                #$this->addMenuItemChildren();
-            }
-        }
+    public function getMenuItems() {
+        return $this->_menuItems;
     }
 
-    protected function addMenuItemChildren($menuItem, $menuRootDepth = 1) {
-
+    public function getMenu() {
+        return $this->_menu;
     }
 }

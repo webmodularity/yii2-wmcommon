@@ -2,38 +2,73 @@
 
 namespace wmc\widgets\menu;
 
+use wmc\models\MenuItem;
 use Yii;
 use wmc\helpers\Html;
-use wmc\models\Menu;
 
 class SingleButton extends NestedSetMenu
 {
+    protected $_listItems = [];
+
+    public $buttonLabel = "Menu";
+    public $buttonOptions = [];
+    public $divOptions = [];
+    public $listOptions = [];
+
     public function init() {
-        // Call before to set $_rootNode
+        // Call before to set $_menuItems
         parent::init();
-        $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-home"]) . "&nbsp;Home", ['/']);
-
-        if (!Yii::$app->user->isGuest) {
-            $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-trash"])
-                . "&nbsp;Spring Cleanup - 2015", ['/page/spring-cleanup']);
-            $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-thumbs-up"])
-                . "&nbsp;Architectural Control Committee", ['/page/architectural-control-committee']);
-            $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-tree-deciduous"])
-                . "&nbsp;Weed Control", ['/file/weed-control.pdf']);
-            $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-paperclip"])
-                . "&nbsp;Download CC&R's", ['/file/ccrs.pdf']);
+        foreach ($this->menuItems as $item) {
+            $this->setNextListItem($item);
+            if (count($item->children) > 0) {
+                // Only go 1 level deep
+                foreach ($item->children as $child) {
+                    $this->setNextListItem($child);
+                }
+            }
         }
-
-        $this->_menuItems[] = Html::a(Html::tag('i', '', ['class' => "glyphicon glyphicon-envelope"]) . "&nbsp;Contact Us", ['/contact']);
-        parent::init();
     }
 
     public function run() {
-        $buttonClass = $this->white === true ? "btn dropdown-toggle outline-white" : "btn dropdown-toggle";
-        return Html::tag('div',
-            Html::button('Site Menu&nbsp;' . Html::tag('i', '', ['class' => 'caret']),
-                ['class' => $buttonClass, 'data-toggle' => "dropdown", 'aria-expanded' => "false"])
-            . Html::ul($this->_menuItems, ['class' => "dropdown-menu pull-right", 'role' => "menu", 'encode' => false])
-            , ['class' => "btn-group pull-right"]);
+        $this->divOptions['class'] = !empty($this->divOptions['class'])
+            ? $this->divOptions['class'] . ' dropdown'
+            : 'dropdown';
+        $this->buttonOptions['class'] = !empty($this->buttonOptions['class'])
+            ? $this->buttonOptions['class'] . ' btn dropdown-toggle'
+            : 'btn dropdown-toggle';
+        $this->buttonOptions['data-toggle'] = 'dropdown';
+        $this->listOptions['class'] = !empty($this->listOptions['class'])
+            ? 'dropdown-menu ' . $this->listOptions['class']
+            : 'dropdown-menu';
+        $this->listOptions['role'] = 'menu';
+        return Html::tag(
+            'div',
+            Html::button($this->buttonLabel . '&nbsp;' . Html::tag('i', '', ['class' => 'caret']), $this->buttonOptions)
+            . Html::tag('ul', implode("\n", $this->_listItems), $this->listOptions)
+            , $this->divOptions);
+    }
+
+    protected function setNextListItem($item) {
+        if ($item->type == MenuItem::TYPE_HEADER) {
+            // Header
+            $this->_listItems[] = Html::tag('li', $item->name, ['class' => 'dropdown-header']);
+        } else if ($item->type == MenuItem::TYPE_DIVIDER) {
+            $this->_listItems[] = Html::tag('li', '', ['class' => 'divider']);
+        } else {
+            // Link
+            if (!empty($item->icon)) {
+                if (!empty($this->menu) && !empty($this->menu->icon_set)) {
+                    $icon_set = $this->menu->icon_set;
+                } else {
+                    $icon_set = null;
+                }
+                $iconClass = empty($icon_set) ? $item->icon : $icon_set . ' ' . $item->icon;
+                $icon = Html::tag('i', '', ['class' => $iconClass]) . "&nbsp;";
+            } else {
+                $icon = null;
+            }
+
+            $this->_listItems[] = Html::tag('li', Html::a($icon . $item->name, $item->link));
+        }
     }
 }

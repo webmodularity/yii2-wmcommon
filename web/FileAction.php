@@ -18,7 +18,8 @@ class FileAction extends \yii\base\Action
         }
 
         if (Yii::$app->user->isGuest) {
-            $groupId = $userId = null;
+            $groupId = 0;
+            $userId = null;
         } else {
             $groupId = Yii::$app->user->identity->group_id;
             $userId = Yii::$app->user->id;
