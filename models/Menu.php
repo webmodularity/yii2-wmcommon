@@ -50,4 +50,14 @@ class Menu extends \wmc\db\ActiveRecord
     {
         return $this->hasMany(MenuItem::className(), ['menu_id' => 'id']);
     }
+
+    public static function getMenuList() {
+        $menus = static::find()->all();
+        $list = [];
+        foreach ($menus as $menu) {
+            $iconSet = empty($menu->icon_set) ? '' : ' [' . $menu->icon_set . ']';
+            $list[$menu->id] = $menu->id . $iconSet;
+        }
+        return $list;
+    }
 }

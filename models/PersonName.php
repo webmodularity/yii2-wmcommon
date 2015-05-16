@@ -79,4 +79,8 @@ class PersonName extends \wmc\db\ActiveRecord
     {
         return $this->hasOne(PersonNameSuffix::className(), ['id' => 'suffix_id']);
     }
+
+    public function getFullName() {
+        return $this->first_name . ' ' . $this->last_name;
+    }
 }
