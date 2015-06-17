@@ -5,12 +5,11 @@ namespace wmc\models;
 use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
-use wmc\models\MenuItem;
 
 /**
- * MenuItemSearch represents the model behind the search form about `wmc\models\MenuItem`.
+ * MenuItemSearch represents the model behind the search form about `wmc\models\Menu`.
  */
-class MenuItemSearch extends MenuItem
+class MenuSearch extends Menu
 {
     /**
      * @inheritdoc
@@ -18,7 +17,7 @@ class MenuItemSearch extends MenuItem
     public function rules()
     {
         return [
-            [['id', 'menu_id', 'type', 'lft', 'rgt', 'depth'], 'integer'],
+            [['id', 'tree_id', 'type', 'lft', 'rgt', 'depth'], 'integer'],
             [['name', 'link', 'icon'], 'safe'],
         ];
     }
@@ -41,7 +40,7 @@ class MenuItemSearch extends MenuItem
      */
     public function search($params)
     {
-        $query = MenuItem::find();
+        $query = Menu::find();
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
@@ -57,7 +56,7 @@ class MenuItemSearch extends MenuItem
 
         $query->andFilterWhere([
             'id' => $this->id,
-            'menu_id' => $this->menu_id,
+            'tree_id' => $this->tree_id,
             'type' => $this->type,
             'lft' => $this->lft,
             'rgt' => $this->rgt,

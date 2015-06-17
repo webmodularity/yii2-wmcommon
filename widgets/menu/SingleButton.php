@@ -2,7 +2,7 @@
 
 namespace wmc\widgets\menu;
 
-use wmc\models\MenuItem;
+use wmc\models\Menu;
 use Yii;
 use wmc\helpers\Html;
 
@@ -15,21 +15,19 @@ class SingleButton extends NestedSetMenu
     public $divOptions = [];
     public $listOptions = [];
 
-    public function init() {
-        // Call before to set $_menuItems
-        parent::init();
-        foreach ($this->menuItems as $item) {
-            $this->setNextListItem($item);
-            if (count($item->children) > 0) {
-                // Only go 1 level deep
-                foreach ($item->children as $child) {
-                    $this->setNextListItem($child);
-                }
-            }
+    public function buildItem($item, $index, $nested = false, $hasChildren = false) {
+        if ($item->type == Menu::TYPE_HEADER) {
+            return Html::tag('li', static::iconTag($item->icon, $this->menu->icon) . $item->name, ['class' => 'dropdown-header']);
+        } else if ($item->type == Menu::TYPE_DIVIDER) {
+            return Html::tag('li', '', ['class' => 'divider']);
+        } else {
+            return Html::tag('li', Html::a(static::iconTag($item->icon, $this->menu->icon) . $item->name, $item->link), []);
         }
     }
 
-    public function run() {
+    public function init() {
+        // Call before to set $_menuItems
+        parent::init();
         $this->divOptions['class'] = !empty($this->divOptions['class'])
             ? $this->divOptions['class'] . ' dropdown'
             : 'dropdown';
@@ -41,34 +39,24 @@ class SingleButton extends NestedSetMenu
             ? 'dropdown-menu ' . $this->listOptions['class']
             : 'dropdown-menu';
         $this->listOptions['role'] = 'menu';
-        return Html::tag(
-            'div',
-            Html::button($this->buttonLabel . '&nbsp;' . Html::tag('i', '', ['class' => 'caret']), $this->buttonOptions)
-            . Html::tag('ul', implode("\n", $this->_listItems), $this->listOptions)
-            , $this->divOptions);
+        $this->listOptions['item'] = function($item, $index) {
+            return $this->buildItem($item, $index, false, false);
+        };
+        foreach ($this->menuItems as $item) {
+            $this->_listItems[] = $item;
+            if (count($item->children) > 0) {
+                // Only go 1 level deep
+                foreach ($item->children as $child) {
+                    $this->_listItems[] = $child;
+                }
+            }
+        }
     }
 
-    protected function setNextListItem($item) {
-        if ($item->type == MenuItem::TYPE_HEADER) {
-            // Header
-            $this->_listItems[] = Html::tag('li', $item->name, ['class' => 'dropdown-header']);
-        } else if ($item->type == MenuItem::TYPE_DIVIDER) {
-            $this->_listItems[] = Html::tag('li', '', ['class' => 'divider']);
-        } else {
-            // Link
-            if (!empty($item->icon)) {
-                if (!empty($this->menu) && !empty($this->menu->icon_set)) {
-                    $icon_set = $this->menu->icon_set;
-                } else {
-                    $icon_set = null;
-                }
-                $iconClass = empty($icon_set) ? $item->icon : $icon_set . ' ' . $item->icon;
-                $icon = Html::tag('i', '', ['class' => $iconClass]) . "&nbsp;";
-            } else {
-                $icon = null;
-            }
-
-            $this->_listItems[] = Html::tag('li', Html::a($icon . $item->name, $item->link));
-        }
+    public function run() {
+        return Html::beginTag('div', $this->divOptions)
+            . Html::button($this->buttonLabel . '&nbsp;' . Html::tag('i', '', ['class' => 'caret']), $this->buttonOptions)
+            . Html::ul($this->_listItems, $this->listOptions)
+            . Html::endTag('div');
     }
 }

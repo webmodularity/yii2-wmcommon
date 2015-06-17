@@ -2,9 +2,9 @@
 
 namespace wmc\models;
 
-use creocoder\nestedsets\NestedSetsQueryBehavior;
+use wmc\behaviors\NestedSetsQueryBehavior;
 
-class MenuItemQuery extends \yii\db\ActiveQuery
+class MenuQuery extends \yii\db\ActiveQuery
 {
     public function behaviors() {
         return [
