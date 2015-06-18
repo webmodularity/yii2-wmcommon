@@ -87,14 +87,14 @@ class Formatter extends \yii\i18n\Formatter
      * @see datetimeFormat
      */
 
-    public function asLocalDatetime($value = null, $format = null, $timeZone = null) {
+    public function asLocalDateTime($value = null, $format = null, $timeZone = null) {
         if (empty($value)) {
             $value = "now";
         }
 
         // Convert format
         if (empty($format)) {
-            $format = $this->datetimeFormat;
+            $format = 'm/d/Y h:i:s A T';
         }
 
         if (empty($timeZone)) {
