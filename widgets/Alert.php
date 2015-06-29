@@ -15,7 +15,7 @@ use rmrevin\yii\fontawesome\FA;
 
 class Alert extends Widget
 {
-    public $encodeMessage = true;
+    public $encode = true;
 
     public $flashId = 'alert';
 
@@ -26,7 +26,6 @@ class Alert extends Widget
     public $icon = null;
 
     private $_validStyles = ['warning', 'success', 'info', 'danger'];
-    private $_defaultIconKey = ['warning' => 'warning', 'success' => 'check', 'info' => 'info', 'danger' => 'times'];
     private $_isBlank = false;
 
     public function init() {
@@ -55,9 +54,9 @@ class Alert extends Widget
             }
         }
 
-        // Normalize encodeMessage
-         if (!is_bool($this->encodeMessage)) {
-             $this->encodeMessage = true;
+        // Normalize encode
+         if (!is_bool($this->encode)) {
+             $this->encode = true;
          }
     }
 
@@ -69,7 +68,7 @@ class Alert extends Widget
     }
 
     public function getMessageHtml() {
-        return $this->encodeMessage === true
+        return $this->encode === true
             ? Html::encode($this->message)
             : $this->message;
     }
@@ -83,12 +82,10 @@ class Alert extends Widget
     }
 
     public function getIconHtml() {
-        if ($this->icon === false) {
+        if ($this->icon === false || empty($this->icon)) {
             return '';
-        } else if (is_null($this->icon)) {
-            return FA::icon($this->_defaultIconKey[$this->style])->fixed_width() . '&nbsp;';
         } else {
-            return FA::icon(Html::encode($this->icon))->fixed_width() . '&nbsp;';
+            return FA::icon(Html::encode($this->icon))->fixedWidth() . '&nbsp;';
         }
     }
 

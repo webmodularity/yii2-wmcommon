@@ -3,20 +3,31 @@
 namespace wmc\web;
 
 use Yii;
-use wmc\helpers\ArrayHelper;
 
 class AlertManager extends \yii\base\Component
 {
     const DEFAULT_FLASH_ID = 'alertManager';
-    public $alertClass = 'wmc\widgets\Alert';
-    private $_alertTypes = [
-        'success' => [],
-        'warning' => [],
-        'info' => [],
-        'danger' => []
-    ];
 
-    public function add($style, $message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
+    protected $_alerts = [];
+
+    public function add($alert, $flashId = null) {
+        $flashId = empty($flashId) ? static::DEFAULT_FLASH_ID : $flashId;
+        if (!empty($alert)) {
+            $flashArray = Yii::$app->session->getFlash($flashId, []);
+            $flashArray[] = $alert;
+            Yii::$app->session->setFlash($flashId, $flashArray);
+        }
+    }
+
+    public function get($flashId = null, $glue = '') {
+        $flashId = empty($flashId) ? static::DEFAULT_FLASH_ID : $flashId;
+        $alerts = Yii::$app->session->getFlash($flashId, []);
+        return implode($glue, $alerts);
+    }
+
+    /** Depreciated - use addAlert instead */
+    /*
+    public function Dadd($style, $message, $heading = null, $options = [], $flashId = self::DEFAULT_FLASH_ID) {
         if ($style == 'error') {
             $style = 'danger';
         }
@@ -46,4 +57,5 @@ class AlertManager extends \yii\base\Component
         }
         return $alertHtml;
     }
+    */
 }

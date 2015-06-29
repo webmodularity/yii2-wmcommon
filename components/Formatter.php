@@ -47,7 +47,7 @@ class Formatter extends \yii\i18n\Formatter
      */
 
     public static function asBinaryIp($ip) {
-        $inetPton = inet_pton($ip);
+        $inetPton = @inet_pton($ip);
         return $inetPton === false ? null : $inetPton;
     }
 
@@ -59,7 +59,7 @@ class Formatter extends \yii\i18n\Formatter
      */
 
     public static function asIp($ip) {
-        $inetNtop = inet_ntop($ip);
+        $inetNtop = @inet_ntop($ip);
         return $inetNtop === false ? null : $inetNtop;
     }
 
