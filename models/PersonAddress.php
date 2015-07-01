@@ -16,6 +16,10 @@ use Yii;
  */
 class PersonAddress extends \wmc\db\ActiveRecord
 {
+    public static function find() {
+        return parent::find()->joinWith('address');
+    }
+
     /**
      * @inheritdoc
      */
@@ -60,6 +64,6 @@ class PersonAddress extends \wmc\db\ActiveRecord
      */
     public function getAddress()
     {
-        return $this->hasOne(AddressStreet::className(), ['id' => 'address_id']);
+        return $this->hasOne(Address::className(), ['id' => 'address_id']);
     }
 }
