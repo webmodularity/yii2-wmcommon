@@ -50,6 +50,21 @@ class Address extends \wmc\db\ActiveRecord
         return [
             [['street1', 'street2', 'city', 'state_iso', 'state_name', 'zip', 'country_iso', 'country_name'], 'trim'],
             [['street1', 'city', 'state_id', 'zip'], 'required', 'on' => 'required'],
+            [['city', 'state_id', 'zip'], 'required', 'when' => function($model) {
+                return !empty($model->street1);
+            }, 'whenClient' => "function (attribute, value) {
+                var streetEmpty = true;
+                $(\"#\"+attribute.id+\"\").closest('fieldset').find('input').each(function(index) {
+                var eleId = $(this).attr('id');
+                if (eleId.substr(eleId.length - 7) == 'street1') {
+                    if ($(this).val()) {
+                        streetEmpty = false;
+                    }
+                    return false;
+                }
+                });
+                return !streetEmpty;}"
+            ],
             [['street1', 'street2', 'city'], 'string', 'max' => 255],
             [['zip'], 'string', 'max' => 20],
             [['country_name'], 'string', 'max' => 50],
