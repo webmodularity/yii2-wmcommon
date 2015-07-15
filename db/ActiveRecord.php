@@ -147,7 +147,7 @@ class ActiveRecord extends \yii\db\ActiveRecord
         // Delete $oldModel
         return $oldModel->delete();
     }
-
+/*
     public function link($name, $model, $extraColumns = []) {
         try {
             parent::link($name, $model, $extraColumns);
@@ -155,4 +155,5 @@ class ActiveRecord extends \yii\db\ActiveRecord
             // Duplicate record, does it really matter?
         }
     }
+ */
 }

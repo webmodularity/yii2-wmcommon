@@ -3,23 +3,31 @@
 namespace wmc\models;
 
 use Yii;
-use yii\base\Exception;
 
 /**
  * This is the model class for table "{{%person}}".
  *
  * @property integer $id
- * @property string $email
+ * @property string $prefix
+ * @property string $first_name
+ * @property string $middle_name
+ * @property string $last_name
+ * @property string $suffix
+ * @property string $nickname
  *
  * @property OrganizationPerson[] $organizationPeople
- * @property OrganizationLocation[] $organizations
  * @property PersonAddress[] $personAddresses
- * @property AddressStreet[] $addresses
- * @property PersonName $personName
  * @property PersonPhone[] $personPhones
  */
 class Person extends \wmc\db\ActiveRecord
 {
+    static $prefix = ['Mr', 'Ms', 'Mrs', 'Miss', 'Mx', 'Dr', 'Prof', 'Hon', 'Rev', 'Fr'];
+
+    static $suffix = ['Jr', 'Sr', 'II', 'III', 'IV', 'Esq', 'CPA', 'DC', 'DDS', 'VM', 'JD', 'MD', 'PhD',
+        'USA', 'USA Ret', 'USAF', 'USAF Ret', 'USMC', 'USMC Ret', 'USN', 'USN Ret', 'USCG', 'USCG Ret'];
+
+    protected $_deleteAddresses = [];
+
     /**
      * @inheritdoc
      */
@@ -34,58 +42,11 @@ class Person extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['email'], 'trim'],
-            [['email'], 'required'],
-            [['email'], 'string', 'max' => 255],
-            [['email'], 'email'],
+            [['first_name', 'middle_name', 'last_name', 'nickname'], 'string', 'max' => 255],
+            [['prefix'], 'string', 'max' => 5],
+            [['suffix'], 'string', 'max' => 10],
+            [['first_name', 'last_name'], 'required']
         ];
-    }
-
-    /**
-     * UPDATE NEEDS WORK
-     * @param bool $insert
-     * @param array $changedAttributes
-     */
-
-    public function afterSave($insert, $changedAttributes) {
-        if ($insert === true) {
-            $this->personName->person_id = $this->id;
-            try {
-                $this->personName->save();
-            } catch (Exception $e) {
-
-            }
-        }
-        parent::afterSave($insert, $changedAttributes);
-    }
-
-    public function beforeValidate() {
-        if ($this->personName->validate() === false) {
-            return false;
-        }
-
-        return parent::beforeValidate();
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function find() {
-        return parent::find()->joinWith('personName');
-    }
-
-    public function init() {
-        if ($this->isNewRecord) {
-            $this->populateRelation('personName', new PersonName());
-        }
-        parent::init();
-    }
-
-    public function load($data, $formName = null) {
-        // Load PersonName
-        $this->personName->load($data, $formName);
-
-        return parent::load($data, $formName);
     }
 
     /**
@@ -95,9 +56,17 @@ class Person extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'email' => 'Email',
-            'email_confirm' => 'Confirm Email'
+            'prefix' => 'Prefix',
+            'first_name' => 'First Name',
+            'middle_name' => 'Middle Name',
+            'last_name' => 'Last Name',
+            'suffix' => 'Suffix',
+            'nickname' => 'Nickname',
         ];
+    }
+
+    public function getFullName() {
+        return $this->first_name . ' ' . $this->last_name;
     }
 
     /**
@@ -129,15 +98,7 @@ class Person extends \wmc\db\ActiveRecord
      */
     public function getAddresses()
     {
-        return $this->hasMany(AddressStreet::className(), ['id' => 'address_id'])->viaTable('{{%person_address}}', ['person_id' => 'id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getPersonName()
-    {
-        return $this->hasOne(PersonName::className(), ['person_id' => 'id']);
+        return $this->hasMany(Address::className(), ['id' => 'address_id'])->viaTable('{{%person_address}}', ['person_id' => 'id']);
     }
 
     /**
@@ -156,7 +117,23 @@ class Person extends \wmc\db\ActiveRecord
         return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
-    public static function findByEmail($email) {
-        return static::findOne(['email' => $email]);
+    public function beforeDelete()
+    {
+        if (parent::beforeDelete()) {
+            $this->_deleteAddresses = $this->addresses;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function afterDelete() {
+        foreach ($this->_deleteAddresses as $address) {
+            try {
+                $address->delete();
+            } catch (\Exception $e) {
+                // Ignore failed delete
+            }
+        }
     }
 }

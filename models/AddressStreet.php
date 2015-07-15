@@ -75,24 +75,4 @@ class AddressStreet extends \wmc\db\ActiveRecord
     {
         return $this->hasMany(Person::className(), ['address_id' => 'id']);
     }
-
-    public static function normalizeStreet($street, $countryId = 1) {
-        if (empty($street)) {
-            return '';
-        }
-        $wordCaps = [
-            'n','e','s','w',
-            'ne','nw','se','sw'
-        ];
-        $streetParts = explode(' ', $street);
-        $normalizedStreet = [];
-        foreach ($streetParts as $p) {
-            if (in_array(strtolower($p), $wordCaps)) {
-                $normalizedStreet[] = strtoupper($p);
-            } else {
-                $normalizedStreet[] = $p;
-            }
-        }
-        return rtrim(implode(' ', $normalizedStreet), '.');
-    }
 }

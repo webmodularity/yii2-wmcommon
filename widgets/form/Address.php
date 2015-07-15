@@ -11,18 +11,27 @@ class Address extends FormWidget
 {
     const DEFAULT_STATE_PROMPT = 'Select a State...';
 
+    protected $_attributeNames = [
+        'street1' => 'street1',
+        'street2' => 'street2',
+        'city' => 'city',
+        'state_id' => 'state_id',
+        'zip' => 'zip'
+    ];
+
     protected $_inputOptions = [
-        'street1' => ['maxlength' => 255],
-        'street2' => ['maxlength' => 255],
-        'city' => ['maxlength' => 255],
+        'street1' => [],
+        'street2' => [],
+        'city' => [],
         'state_id' => [],
-        'zip' => ['maxlength' => 20]
+        'zip' => []
     ];
     protected $_fieldAliases = ['state' => 'state_id'];
 
     public $countryId;
     public $stateIdList = [];
     public $stateFullName = false;
+    public $index = null;
 
     protected $_labels = [
         'street1' => 'Street Address',
@@ -41,6 +50,12 @@ class Address extends FormWidget
         }
         $this->_stateValues = AddressState::getStateList($this->stateFullName, $this->countryId, $this->stateIdList);
 
+        if (!empty($this->index)) {
+            foreach ($this->_attributeNames as $key => $attributeName) {
+                $this->_attributeNames[$key] = $attributeName . '[' . $this->index . ']';
+            }
+        }
+
         // State Prompt
         if (array_key_exists('prompt', $this->_inputOptions['state_id']) === false) {
             $this->_inputOptions['state_id']['prompt'] = static::DEFAULT_STATE_PROMPT;
@@ -50,22 +65,22 @@ class Address extends FormWidget
     public function run() {
         return Html::tag('div',
             Html::tag('div',
-                $this->form->field($this->model, 'street1')->textInput($this->_inputOptions['street1'])->label($this->getLabel('street1')),
+                $this->form->field($this->model, $this->_attributeNames['street1'])->textInput($this->_inputOptions['street1'])->label($this->getLabel('street1')),
                 ['class' => "col-lg-6"])
             . Html::tag('div',
-                $this->form->field($this->model, 'street2')->textInput($this->_inputOptions['street2'])->label($this->getLabel('street2')),
+                $this->form->field($this->model, $this->_attributeNames['street2'])->textInput($this->_inputOptions['street2'])->label($this->getLabel('street2')),
                 ['class' => "col-lg-6"]),
             ['class' => "row"])
 
         . Html::tag('div',
             Html::tag('div',
-                $this->form->field($this->model, 'city')->textInput($this->_inputOptions['city'])->label($this->getLabel('city')),
+                $this->form->field($this->model, $this->_attributeNames['city'])->textInput($this->_inputOptions['city'])->label($this->getLabel('city')),
                 ['class' => "col-sm-5"])
             . Html::tag('div',
-                $this->form->field($this->model, 'state_id')->dropDownList($this->_stateValues,$this->_inputOptions['state_id'])->label($this->getLabel('state_id')),
+                $this->form->field($this->model, $this->_attributeNames['state_id'])->dropDownList($this->_stateValues,$this->_inputOptions['state_id'])->label($this->getLabel('state_id')),
                 ['class' => "col-xs-6 col-sm-3"])
             . Html::tag('div',
-                $this->form->field($this->model, 'zip')->textInput($this->_inputOptions['zip'])->label($this->getLabel('zip')),
+                $this->form->field($this->model, $this->_attributeNames['zip'])->textInput($this->_inputOptions['zip'])->label($this->getLabel('zip')),
                 ['class' => "col-xs-6 col-sm-4"]),
             ['class' => "row"]);
     }

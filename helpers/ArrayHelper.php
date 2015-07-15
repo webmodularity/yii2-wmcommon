@@ -5,10 +5,6 @@ namespace wmc\helpers;
 class ArrayHelper extends \yii\helpers\ArrayHelper
 {
 
-    public static function isAssoc(&$array) {
-        return (bool)count(array_filter(array_keys($array), 'is_string'));
-    }
-
     /**
      * Behaves much like ArrayHelper::merge() but merges class rather than replacing $b['class'] with $a['class].
      * If $a['class'] = 'class1 class2' and $b['class'] = 'class3' this function will return $c['class'] = 'class1 class2 class3'.
