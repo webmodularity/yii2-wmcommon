@@ -46,6 +46,12 @@ class RelatedModelBehavior extends Behavior
                 $this->_relations[$relationName] = ['class' => $relationSettings['class']];
             }
 
+            // Init Options
+            $this->_relations[$relationName]['initOptions'] = null;
+            if (isset($relationSettings['initOptions']) && is_array($relationSettings['initOptions'])) {
+                $this->_relations[$relationName]['initOptions'] = $relationSettings['initOptions'];
+            }
+
             // Attributes
             $this->_relations[$relationName]['attributes'] = null;
             if (!isset($relationSettings['attributes'])) {
