@@ -3,17 +3,16 @@
 namespace wmc\models;
 
 use Yii;
+use wmc\behaviors\FindOrInsertBehavior;
 
 /**
  * This is the model class for table "{{%phone}}".
  *
  * @property integer $id
+ * @property integer $type_id
  * @property string $area_code
  * @property string $number
  * @property string $extension
- *
- * @property OrganizationPhone[] $organizationPhones
- * @property PersonPhone[] $personPhones
  */
 class Phone extends \wmc\db\ActiveRecord
 {
@@ -24,7 +23,15 @@ class Phone extends \wmc\db\ActiveRecord
     const TYPE_FAX = 5;
 
     public $full;
-    public $type_id;
+
+    public function behaviors() {
+        return [
+            'findOrInsert' =>
+                [
+                    'class' => FindOrInsertBehavior::className()
+                ]
+        ];
+    }
 
     /**
      * @inheritdoc
@@ -49,8 +56,8 @@ class Phone extends \wmc\db\ActiveRecord
             [['area_code'], 'string', 'max' => 3],
             [['number'], 'string', 'max' => 7],
             [['extension'], 'string', 'max' => 5],
-            [['area_code', 'number', 'extension'], 'match', 'pattern' => '/[0-9]/'],
-            [['area_code', 'number', 'extension'], 'unique', 'targetAttribute' => ['area_code', 'number', 'extension'], 'message' => 'This phone number is already in use.']
+            [['extension'], 'default', 'value' => ''],
+            [['area_code', 'number', 'extension'], 'match', 'pattern' => '/[0-9]/']
         ];
     }
 
@@ -61,26 +68,11 @@ class Phone extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
+            'type_id' => 'Phone Type',
             'area_code' => 'Area Code',
             'number' => 'Number',
-            'extension' => 'Extension',
+            'extension' => 'Ext',
         ];
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getOrganizationPhones()
-    {
-        return $this->hasMany(OrganizationPhone::className(), ['phone_id' => 'id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getPersonPhones()
-    {
-        return $this->hasMany(PersonPhone::className(), ['phone_id' => 'id']);
     }
 
     /**
@@ -125,5 +117,9 @@ class Phone extends \wmc\db\ActiveRecord
             $types = $allTypes;
         }
         return $types;
+    }
+
+    public function getIsEmpty() {
+        return empty($this->full);
     }
 }

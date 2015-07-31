@@ -3,6 +3,10 @@
 namespace wmc\models;
 
 use Yii;
+use wmc\behaviors\RelatedModelBehavior;
+use wmc\models\AddressPrimary;
+use wmc\models\AddressShipping;
+use wmc\models\AddressBilling;
 
 /**
  * This is the model class for table "{{%person}}".
@@ -14,19 +18,46 @@ use Yii;
  * @property string $last_name
  * @property string $suffix
  * @property string $nickname
- *
- * @property OrganizationPerson[] $organizationPeople
- * @property PersonAddress[] $personAddresses
- * @property PersonPhone[] $personPhones
  */
 class Person extends \wmc\db\ActiveRecord
 {
+    const ADDRESS_PRIMARY = 1;
+    const ADDRESS_SHIPPING = 2;
+    const ADDRESS_BILLING = 3;
+
     static $prefix = ['Mr', 'Ms', 'Mrs', 'Miss', 'Mx', 'Dr', 'Prof', 'Hon', 'Rev', 'Fr'];
 
     static $suffix = ['Jr', 'Sr', 'II', 'III', 'IV', 'Esq', 'CPA', 'DC', 'DDS', 'VM', 'JD', 'MD', 'PhD',
         'USA', 'USA Ret', 'USAF', 'USAF Ret', 'USMC', 'USMC Ret', 'USN', 'USN Ret', 'USCG', 'USCG Ret'];
 
     protected $_deleteAddresses = [];
+
+    public function behaviors() {
+        return [
+            'relatedModel' =>
+                [
+                    'class' => RelatedModelBehavior::className(),
+                    'relations' => [
+                        'primaryAddress' => [
+                            'class' => AddressPrimary::className(),
+                            'extraColumns' => ['address_type_id' => static::ADDRESS_PRIMARY]
+                        ],
+                        'phone' => [
+                            'class' => Phone::className()
+                        ]
+                    ]
+                ]
+        ];
+    }
+
+    public static function find()
+    {
+        return parent::find()->with('primaryAddress', 'phone');
+    }
+
+    public function getIsEmpty() {
+        return empty($this->first_name);
+    }
 
     /**
      * @inheritdoc
@@ -72,25 +103,9 @@ class Person extends \wmc\db\ActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getOrganizationPeople()
-    {
-        return $this->hasMany(OrganizationPerson::className(), ['person_id' => 'id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
     public function getOrganizations()
     {
         return $this->hasMany(OrganizationLocation::className(), ['id' => 'organization_id'])->viaTable('{{%organization_person}}', ['person_id' => 'id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getPersonAddresses()
-    {
-        return $this->hasMany(PersonAddress::className(), ['person_id' => 'id']);
     }
 
     /**
@@ -104,9 +119,39 @@ class Person extends \wmc\db\ActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getPersonPhones()
+    public function getPrimaryAddress()
     {
-        return $this->hasMany(PersonPhone::className(), ['person_id' => 'id']);
+        return $this->hasOne(AddressPrimary::className(), ['id' => 'address_id'])->viaTable('{{%person_address}}', ['person_id' => 'id'], function($query) {
+            $query->onCondition(['address_type_id' => static::ADDRESS_PRIMARY]);
+        });
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getShippingAddress()
+    {
+        return $this->hasOne(AddressShipping::className(), ['id' => 'address_id'])->viaTable('{{%person_address}}', ['person_id' => 'id'], function($query) {
+            $query->onCondition(['address_type_id' => static::ADDRESS_SHIPPING]);
+        });;
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getBillingAddress()
+    {
+        return $this->hasOne(AddressBilling::className(), ['id' => 'address_id'])->viaTable('{{%person_address}}', ['person_id' => 'id'], function($query) {
+            $query->onCondition(['address_type_id' => static::ADDRESS_BILLING]);
+        });;
+    }
+
+    /**
+     * To be used in scenarios in which user has only one phone number associated (of any type)
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPhone() {
+        return $this->hasOne(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
     /**

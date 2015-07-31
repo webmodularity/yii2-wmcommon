@@ -6,7 +6,7 @@ use Yii;
 use yii\base\Widget;
 use yii\base\InvalidConfigException;
 use yii\web\JsExpression;
-use wmc\helpers\Html;
+use yii\helpers\Html;
 use yii\helpers\Json;
 
 class TimeCircles extends Widget

@@ -4,6 +4,7 @@ namespace wmc\models;
 
 use Yii;
 use wmc\behaviors\TimestampBehavior;
+use wmc\helpers\IPHelper;
 
 /**
  * This is the model class for table "{{%file_log}}".
@@ -90,7 +91,7 @@ class FileLog extends \wmc\db\ActiveRecord
     {
         if (parent::beforeSave($insert)) {
             if ($insert === true) {
-                $this->ip = static::getBinaryIp(Yii::$app->request->getUserIP());
+                $this->ip = IPHelper::toBinaryIp(Yii::$app->request->getUserIP());
             }
             return true;
         } else {

@@ -3,6 +3,7 @@
 namespace wmc\models;
 
 use Yii;
+use wmc\behaviors\FindOrInsertBehavior;
 
 /**
  * This is the model class for table "{{%address_location}}".
@@ -13,10 +14,18 @@ use Yii;
  * @property string $zip
  *
  * @property AddressState $state
- * @property AddressStreet[] $addressStreets
  */
 class AddressLocation extends \wmc\db\ActiveRecord
 {
+    public function behaviors() {
+        return [
+            'findOrInsert' =>
+                [
+                    'class' => FindOrInsertBehavior::className()
+                ]
+        ];
+    }
+
     /**
      * @inheritdoc
      */
@@ -31,11 +40,8 @@ class AddressLocation extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['city', 'state_id', 'zip'], 'required'],
-            [['state_id'], 'integer'],
-            [['city'], 'string', 'max' => 255],
-            [['zip'], 'string', 'max' => 20],
-            [['city', 'state_id', 'zip'], 'unique', 'targetAttribute' => ['city', 'state_id', 'zip'], 'message' => 'The address location is already in use.']
+
+            [['city', 'state_id', 'zip'], 'required']
         ];
     }
 
@@ -47,7 +53,7 @@ class AddressLocation extends \wmc\db\ActiveRecord
         return [
             'id' => 'ID',
             'city' => 'City',
-            'state_id' => 'State ID',
+            'state_id' => 'State',
             'zip' => 'Zip',
         ];
     }
@@ -58,13 +64,5 @@ class AddressLocation extends \wmc\db\ActiveRecord
     public function getState()
     {
         return $this->hasOne(AddressState::className(), ['id' => 'state_id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getAddressStreets()
-    {
-        return $this->hasMany(AddressStreet::className(), ['location_id' => 'id']);
     }
 }

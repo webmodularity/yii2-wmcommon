@@ -3,7 +3,7 @@
 namespace wmc\widgets\form;
 
 use Yii;
-use wmc\helpers\Html;
+use yii\helpers\Html;
 use yii\base\InvalidConfigException;
 use wmc\models\AddressState;
 

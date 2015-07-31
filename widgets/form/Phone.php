@@ -3,7 +3,7 @@
 namespace wmc\widgets\form;
 
 use Yii;
-use wmc\helpers\Html;
+use yii\helpers\Html;
 
 class Phone extends FormWidget
 {
@@ -21,15 +21,15 @@ class Phone extends FormWidget
                         'mask' => "(999)999-9999"
                     ]
                 )->label(false),
-                ['class' => 'col-sm-6'])
+                ['class' => 'col col-xs-7 col-sm-6'])
             . Html::tag('div',
                 $this->form->field($this->model, 'type_id')->dropDownList(\wmc\models\Phone::getTypeList([
                         \wmc\models\Phone::TYPE_MOBILE,
                         \wmc\models\Phone::TYPE_HOME,
                         \wmc\models\Phone::TYPE_OFFICE
                     ]
-                ), ['prompt' => 'Phone Type...'])->label(false),
-                ['class' => 'col-sm-6']),
+                ))->label(false),
+                ['class' => 'col col-xs-5 col-sm-6']),
             ['class' => 'row']);
     }
 

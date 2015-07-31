@@ -2,7 +2,7 @@
 
 namespace wmc\widgets\menu;
 
-use wmc\helpers\Html;
+use yii\helpers\Html;
 use wmc\models\Menu;
 
 /**

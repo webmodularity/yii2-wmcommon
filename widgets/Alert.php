@@ -3,7 +3,7 @@
 namespace wmc\widgets;
 
 use Yii;
-use wmc\helpers\Html;
+use yii\helpers\Html;
 use yii\base\Widget;
 use yii\base\InvalidConfigException;
 use rmrevin\yii\fontawesome\FA;

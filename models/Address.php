@@ -3,8 +3,7 @@
 namespace wmc\models;
 
 use Yii;
-use yii\base\InvalidCallException;
-use yii\db\IntegrityException;
+use wmc\behaviors\FindOrInsertBehavior;
 
 /**
  * This is the model class for table "{{%address}}".
@@ -24,11 +23,16 @@ use yii\db\IntegrityException;
  */
 class Address extends \wmc\db\ActiveRecord
 {
-    const TYPE_PRIMARY = 1;
-    const TYPE_SHIPPING = 2;
-    const TYPE_BILLING = 3;
-
     public $country_id = 1;
+
+    public function behaviors() {
+        return [
+            'findOrInsert' =>
+                [
+                    'class' => FindOrInsertBehavior::className()
+                ]
+        ];
+    }
 
     /**
      * @inheritdoc
@@ -101,69 +105,11 @@ class Address extends \wmc\db\ActiveRecord
         ];
     }
 
-    public function saveAddress($relationName, $relatedModel, $addressTypeId = Address::TYPE_PRIMARY) {
-        // Always validate to ensure field normalization
-        if (!$this->validate()) {
-            return false;
-        }
-
-        if (!$this->isEmpty && !empty($this->getDirtyAttributes(['street1', 'street2', 'city', 'state_id', 'zip']))) {
-            // Address was changed, create new address , unlink current address,
-            // attempt to delete current address (for garbage collection), then link new address
-            $addressClass = get_called_class();
-            $newAddress = new $addressClass([
-                'country_id' => $this->country_id,
-                'street1' => $this->street1,
-                'street2' => $this->street2,
-                'city' => $this->city,
-                'state_id' => $this->state_id,
-                'zip' => $this->zip
-            ]);
-            if (!$newAddress->save(false)) {
-                Yii::error("Failed to save new address.");
-                return false;
-            }
-            try {
-                $this->unlink($relationName, $relatedModel, true);
-            } catch (InvalidCallException $e) {
-                Yii::error("Failed to unlink address!");
-                return false;
-            }
-            $this->delete();
-            try {
-                $newAddress->link($relationName, $relatedModel, ['address_type_id' => $addressTypeId]);
-            } catch (InvalidCallException $e) {
-                Yii::error("Failed to link new address!");
-                return false;
-            }
-            return true;
-        } else if ($this->isEmpty && !$this->isNewRecord) {
-            // Address was set but is now empty
-            try {
-                $this->unlink($relationName, $relatedModel, true);
-            } catch (InvalidCallException $e) {
-                Yii::error("Failed to unlink address!" . $e->getMessage());
-                return false;
-            }
-            $deletedRows = $this->delete();
-            return $deletedRows === false ? false : true;
-        } else if (!$this->isEmpty && $this->save(false)) {
-            if ($this->isNewRecord) {
-                try {
-                    $this->link($relationName, $relatedModel, ['address_type_id' => $addressTypeId]);
-                } catch (InvalidCallException $e) {
-                    return false;
-                }
-            }
-            return true;
-        } else if ($this->isEmpty) {
-            return true;
-        }
-        return false;
-    }
-
-    public function getIsEmpty() {
-        return empty($this->street1);
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPeople() {
+        return $this->hasMany(Person::className(), ['id' => 'person_id'])->viaTable('{{%person_address}}', ['address_id' => 'id']);
     }
 
     public function getOneLine() {
@@ -171,191 +117,69 @@ class Address extends \wmc\db\ActiveRecord
         return $street . ', ' . $this->city . ', ' . $this->state_iso . ', ' . $this->zip;
     }
 
-    /**
-     * Ignores attributes param, handles attributes internally
-     */
-
-    protected function insertInternal($attributes = null) {
-        if (!$this->beforeSave(true)) {
+    public function save($runValidation = true, $attributeNames = null) {
+        if ($runValidation && !$this->validate($attributeNames)) {
             return false;
         }
-
-        $values = [
-            'street1' => $this->street1,
-            'street2' => $this->street2,
-            'location_id' => $this->location_id
-        ];
-
-        // Search for existing Address record
-        $address = AddressStreet::find()->where($values)->one();
-        if (!is_null($address)) {
-            // Record already exists
-            $this->id = $values['id'] = $address->id;
-            return $this->refresh();
-        }
-
-        $address = new AddressStreet();
-        foreach ($values as $key => $value) {
-            $address->$key = $value;
-        }
-
-        if ($address->save()) {
-            $this->id = $values['id'] = $address->id;
-            $this->setOldAttributes($values);
-            $this->afterSave(true, array_fill_keys(array_keys($values), null));
-            return true;
+        $this->setLocationId();
+        $attributes = ['street1', 'street2', 'location_id'];
+        if ($this->getIsNewRecord()) {
+            $addressStreet = new AddressStreet;
+            $addressStreet->setAttributes($this->getAttributes($attributes), false);
+            if ($addressStreet->insert(false)) {
+                $this->id = $addressStreet->id;
+                $this->refresh();
+                return true;
+            } else {
+                return false;
+            }
         } else {
-            return false;
-        }
-    }
-
-    /**
-     *  TODO: Support optimistic locking?
-     */
-
-    protected function updateInternal($attributes = null) {
-        if (!$this->beforeSave(false)) {
-            return false;
-        }
-
-        $values = $this->getDirtyAttributes(['street1', 'street2', 'location_id']);
-
-        if (empty($values)) {
-            $this->afterSave(false, $values);
-            return 0;
-        }
-
-        $condition = $this->getOldPrimaryKey(true);
-        $lock = $this->optimisticLock();
-        if ($lock !== null) {
-            $values[$lock] = $this->$lock + 1;
-            $condition[$lock] = $this->$lock;
-        }
-
-        $addressStreetValues = [
-            'street1' => $this->street1,
-            'street2' => $this->street2,
-            'location_id' => $this->location_id
-        ];
-        // Search for existing Address record
-        $existingAddress = AddressStreet::find()->where($addressStreetValues)->one();
-
-        if (is_null($existingAddress)) {
-            $rows = AddressStreet::updateAll($addressStreetValues, $condition);
-        } else {
-            $thisStreet = AddressStreet::findOne($this->id);
-            $rows = static::mergeRedundantRecord($thisStreet, $existingAddress);
-            $this->setOldAttribute('id', $this->id);
-            $this->id = $existingAddress->id;
-            if ($this->refresh() === true) {
-                return 1;
+            $addressStreet = $this->getAddressStreetModel();
+            if (is_null($addressStreet)) {
+                return false;
+            }
+            $addressStreet->setAttributes($this->getAttributes($attributes), false);
+            if ($addressStreet->update(false) !== false) {
+                $this->refresh();
+                return true;
             } else {
                 return false;
             }
         }
-
-        $changedAttributes = [];
-        foreach ($values as $name => $value) {
-            $changedAttributes[$name] = $this->getOldAttribute($name) ? $this->getOldAttribute($name) : null;
-            $this->setOldAttribute($name, $value);
-        }
-        $this->afterSave(false, $changedAttributes);
-        return $rows;
     }
 
-    public function beforeSave($insert) {
-        if (parent::beforeSave($insert)) {
-            // Fail if address is empty
-            if ($this->isEmpty) {
-                return false;
-            }
-            // Location
-            $location = AddressLocation::find()
-                ->where(
-                    [
-                        'city' => $this->city,
-                        'zip' => $this->zip,
-                        'state_id' => $this->state_id
-                    ]
-                )->one();
-
-            if (is_null($location)) {
-                $location = new AddressLocation();
-                $location->city = $this->city;
-                $location->state_id = $this->state_id;
-                $location->zip = $this->zip;
-                if (!$location->save()) {
-                    return false;
-                }
-            }
-            $this->location_id = $location->id;
-
-            return true;
-        }
-    }
-
-    public function afterSave($insert, $changedAttributes) {
-        if ($insert === false && in_array('location_id', array_keys($changedAttributes))) {
-            $this->doLocationGc();
-        }
-        parent::afterSave($insert, $changedAttributes);
-    }
-
-    /**
-     * TODO: Support optimistic locks?
-     */
-
-    protected function deleteInternal()
-    {
-        if (!$this->beforeDelete()) {
-            return false;
-        }
-
-        $condition = $this->getOldPrimaryKey(true);
-
-        $street = AddressStreet::find()->where($condition)->one();
-        if (!empty($street)) {
-            try {
-                $result = $street->delete();
-            } catch (\Exception $e) {
-                // Ignore failed delete on the assumption that it is in use by another model
-                $result = 0;
-            }
+    public function delete() {
+        $addressStreet = $this->getAddressStreetModel();
+        if (!is_null($addressStreet)) {
+            return $addressStreet->delete();
         } else {
-            return false;
+            return 0;
         }
-
-        $this->setOldAttributes(null);
-        $this->afterDelete();
-        return $result;
     }
 
-    public function afterDelete() {
-        $this->doLocationGc();
+    protected function setLocationId() {
+        if (!$this->isEmpty) {
+            $location = new AddressLocation;
+            $location->setAttributes($this->getAttributes(['city', 'state_id', 'zip']));
+            if ($location->findOrInsert()) {
+                $this->location_id = $location->id;
+            }
+
+        }
     }
 
-    /**
-     * No optimistic lock support currently
-     * @return null
-     */
-
-    public function optimisticLock() {
-        return null;
+    protected function getAddressStreetModel() {
+        return AddressStreet::findOne($this->getPrimaryKey(true));
     }
 
-    protected function doLocationGc() {
-        $db = static::getDb();
-        $db->createCommand("DELETE address_location FROM address_location
-                    LEFT JOIN address_street ON address_street.location_id = address_location.id
-                    WHERE address_street.id IS NULL")->execute();
+    /* relatedModel */
+
+    public function getIsEmpty() {
+        return empty($this->street1);
     }
 
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getPeople()
-    {
-        return $this->hasMany(Person::className(), ['id' => 'person_id'])->viaTable('{{%person_address}}', ['address_id' => 'id']);
+    public static function relatedModelAttributes() {
+        return ['street1', 'street2', 'city', 'state_id', 'zip'];
     }
 
 }

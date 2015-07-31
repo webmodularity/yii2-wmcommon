@@ -13,11 +13,13 @@ use Yii;
  * @property integer $location_id
  *
  * @property AddressLocation $location
- * @property OrganizationLocation[] $organizationLocations
- * @property Person[] $people
  */
 class AddressStreet extends \wmc\db\ActiveRecord
 {
+    public $city;
+    public $state_id;
+    public $zip;
+
     /**
      * @inheritdoc
      */
@@ -33,10 +35,27 @@ class AddressStreet extends \wmc\db\ActiveRecord
     {
         return [
             [['street1', 'location_id'], 'required'],
-            [['location_id'], 'integer'],
-            [['street1', 'street2'], 'string', 'max' => 255],
-            [['street1', 'street2', 'location_id'], 'unique', 'targetAttribute' => ['street1', 'street2', 'location_id'], 'message' => 'The address is already in use.']
+            [['street2'], 'safe']
         ];
+    }
+
+    public function afterSave($insert, $changedAttributes) {
+        if ($insert === false && in_array('location_id', array_keys($changedAttributes))) {
+            $this->doLocationGc();
+        }
+        parent::afterSave($insert, $changedAttributes);
+    }
+
+
+    /**
+     * TODO: convert this to ActiveQuery
+     */
+
+    protected function doLocationGc() {
+        $db = static::getDb();
+        $db->createCommand("DELETE address_location FROM address_location
+                    LEFT JOIN address_street ON address_street.location_id = address_location.id
+                    WHERE address_street.id IS NULL")->execute();
     }
 
     /**
@@ -58,21 +77,5 @@ class AddressStreet extends \wmc\db\ActiveRecord
     public function getLocation()
     {
         return $this->hasOne(AddressLocation::className(), ['id' => 'location_id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getOrganizationLocations()
-    {
-        return $this->hasMany(OrganizationLocation::className(), ['address_id' => 'id']);
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getPeople()
-    {
-        return $this->hasMany(Person::className(), ['address_id' => 'id']);
     }
 }
