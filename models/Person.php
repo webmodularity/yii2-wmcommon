@@ -162,23 +162,4 @@ class Person extends \wmc\db\ActiveRecord
         return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
-    public function beforeDelete()
-    {
-        if (parent::beforeDelete()) {
-            $this->_deleteAddresses = $this->addresses;
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public function afterDelete() {
-        foreach ($this->_deleteAddresses as $address) {
-            try {
-                $address->delete();
-            } catch (\Exception $e) {
-                // Ignore failed delete
-            }
-        }
-    }
 }

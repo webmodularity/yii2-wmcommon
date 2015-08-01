@@ -3,7 +3,7 @@
 namespace wmc\models;
 
 use Yii;
-use wmc\helpers\ArrayHelper;
+use yii\helpers\ArrayHelper;
 
 /**
  * This is the model class for table "common.address_state".

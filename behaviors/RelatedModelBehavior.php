@@ -8,17 +8,18 @@ use yii\base\Behavior;
 use yii\base\InvalidCallException;
 use yii\base\InvalidConfigException;
 use yii\db\ActiveRecord;
-use wmc\helpers\ArrayHelper;
+use yii\helpers\ArrayHelper;
+use yii\helpers\VarDumper;
 
 class RelatedModelBehavior extends Behavior
 {
 
     protected $_relations = [];
-    protected $_gcModels = [];
-    protected $_linkModels = [];
-    protected $_afterSaveLinks = [];
 
-    public $activeRelatedModels = [];
+    protected $_linkModels = [];
+    protected $_unlinkModels = [];
+    protected $_gcModels = [];
+
 
     public function events()
     {
@@ -27,6 +28,8 @@ class RelatedModelBehavior extends Behavior
             ActiveRecord::EVENT_AFTER_FIND => 'afterFind',
             ActiveRecord::EVENT_AFTER_INSERT => 'afterSave',
             ActiveRecord::EVENT_AFTER_UPDATE => 'afterSave',
+            ActiveRecord::EVENT_BEFORE_DELETE => 'beforeDelete',
+            ActiveRecord::EVENT_AFTER_DELETE => 'afterDelete'
         ];
     }
 
@@ -75,6 +78,12 @@ class RelatedModelBehavior extends Behavior
             $this->_relations[$relationName]['extraColumns'] = [];
             if (isset($relationSettings['extraColumns']) && is_array($relationSettings['extraColumns'])) {
                 $this->_relations[$relationName]['extraColumns'] = $relationSettings['extraColumns'];
+            }
+
+            // deleteOnUnlink
+            $this->_relations[$relationName]['deleteOnUnlink'] = true;
+            if (isset($relationSettings['deleteOnUnlink']) && $relationSettings['deleteOnUnlink'] === false) {
+                $this->_relations[$relationName]['deleteOnUnlink'] = false;
             }
         }
     }
@@ -208,27 +217,14 @@ class RelatedModelBehavior extends Behavior
         }
     }
 
-    protected function getOldModel($relationName) {
-        $oldClass = get_class($this->owner->$relationName);
-        $pk = $this->owner->$relationName->getPrimaryKey(true);
-        return $oldClass::find()->where($pk)->one();
-    }
-
     public function afterSave() {
         // Link Junction Tables
         foreach ($this->_linkModels as $linkRelationName) {
             $this->owner->link($linkRelationName, $this->owner->$linkRelationName, $this->getRelationProperty($linkRelationName, 'extraColumns'));
         }
-        // GC Models
-        foreach ($this->_gcModels as $model) {
-            // Quietly try and delete old record
-            try {
-                if (!empty($model)) {
-                    $model->delete();
-                }
-            } catch (\Exception $e) {
-
-            }
+        // Unlink Models
+        foreach ($this->_unlinkModels as $model) {
+            $this->tryDelete($model);
         }
     }
 
@@ -250,6 +246,20 @@ class RelatedModelBehavior extends Behavior
         }
     }
 
+    public function beforeDelete() {
+        foreach ($this->getRelationNames() as $relationName) {
+            if (!empty($this->owner->$relationName)) {
+                $this->_gcModels[] = $this->owner->$relationName;
+            }
+        }
+    }
+
+    public function afterDelete() {
+        foreach ($this->_gcModels as $model) {
+            $this->tryDelete($model);
+        }
+    }
+
     protected function link($relationName) {
         if (!$this->hasVia($relationName)) {
             $link = $this->owner->getRelation($relationName)->link;
@@ -262,20 +272,15 @@ class RelatedModelBehavior extends Behavior
     }
 
     protected function unlink($relationName) {
+        $this->_unlinkModels[] = $this->getOldModel($relationName);
         if (!$this->hasVia($relationName)) {
             $link = $this->owner->getRelation($relationName)->link;
             foreach ($this->owner->$relationName->primaryKey() as $pk) {
                 $this->owner->setAttribute($link[$pk], NULL);
             }
-            $this->_gcModels[] = $this->getOldModel($relationName);
         } else {
-            $this->owner->unlink($relationName, $this->owner->$relationName, $this->deleteOnUnlink($relationName));
+            $this->owner->unlink($relationName, $this->owner->$relationName, $this->getRelationProperty($relationName, 'deleteOnUnlink'));
         }
-    }
-
-    protected function deleteOnUnlink($relationName) {
-        return ($this->hasVia($relationName) && $this->getRelationProperty($relationName, 'delete') !== false)
-        || $this->getRelationProperty($relationName, 'delete') ? true : false;
     }
 
     protected function hasVia($relationName) {
@@ -299,12 +304,28 @@ class RelatedModelBehavior extends Behavior
     }
 
     protected function getRelationProperty($relationName, $propertyName) {
-        return isset($this->_relations[$relationName]) && isset($this->_relations[$relationName][$propertyName])
-            ? $this->_relations[$relationName][$propertyName] : null;
+        return $this->_relations[$relationName][$propertyName];
     }
 
     protected function getExistingModel($relationName) {
         return $this->owner->$relationName->find()->where($this->owner->$relationName->getAttributes($this->getRelationProperty($relationName, 'attributes'), $this->owner->primaryKey()))->one();
+    }
+
+    protected function tryDelete($model) {
+        // Quietly try and delete old record
+        try {
+            if (!empty($model)) {
+                $model->delete();
+            }
+        } catch (\Exception $e) {
+
+        }
+    }
+
+    protected function getOldModel($relationName) {
+        $oldClass = get_class($this->owner->$relationName);
+        $pk = $this->owner->$relationName->getPrimaryKey(true);
+        return $oldClass::find()->where($pk)->one();
     }
 
     protected function getNewModel($relationName) {

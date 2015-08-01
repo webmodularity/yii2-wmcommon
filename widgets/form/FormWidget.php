@@ -3,8 +3,9 @@
 namespace wmc\widgets\form;
 
 use Yii;
-use wmc\helpers\ArrayHelper;
+use yii\helpers\ArrayHelper;
 use yii\base\InvalidConfigException;
+use yii\helpers\Html;
 
 class FormWidget extends \yii\base\Widget
 {
@@ -23,8 +24,16 @@ class FormWidget extends \yii\base\Widget
         if (is_array($inputOptions) && !empty($inputOptions)) {
             foreach ($inputOptions as $field => $options) {
                 if (in_array($this->getFieldName($field), $this->getFieldNames())) {
-                    $this->_inputOptions[$this->getFieldName($field)] = ArrayHelper::mergeClass(
-                        $this->_inputOptions[$this->getFieldName($field)], $options);
+                    if (isset($options['class'])) {
+                        Html::addCssClass($this->_inputOptions[$this->getFieldName($field)], ArrayHelper::remove($options, 'class'));
+                    }
+                    if (isset($options['style'])) {
+                        Html::addCssStyle($this->_inputOptions[$this->getFieldName($field)], ArrayHelper::remove($options, 'style'));
+                    }
+                    $this->_inputOptions[$this->getFieldName($field)] = ArrayHelper::merge(
+                        $this->_inputOptions[$this->getFieldName($field)],
+                        $options
+                    );
                 }
             }
         }

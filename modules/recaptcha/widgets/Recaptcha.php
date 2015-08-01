@@ -2,8 +2,9 @@
 
 namespace wmc\modules\recaptcha\widgets;
 
-use wmc\helpers\ArrayHelper;
 use Yii;
+use yii\helpers\ArrayHelper;
+use yii\base\InvalidConfigException;
 
 class Recaptcha extends \Zelenin\yii\widgets\Recaptcha\widgets\Recaptcha
 {
