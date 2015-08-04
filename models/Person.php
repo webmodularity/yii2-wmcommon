@@ -7,6 +7,9 @@ use wmc\behaviors\RelatedModelBehavior;
 use wmc\models\AddressPrimary;
 use wmc\models\AddressShipping;
 use wmc\models\AddressBilling;
+use wmc\models\user\User;
+use wmc\models\user\UserLog;
+use yii\helpers\VarDumper;
 
 /**
  * This is the model class for table "{{%person}}".
@@ -162,4 +165,14 @@ class Person extends \wmc\db\ActiveRecord
         return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
+    public function afterSave($insert, $changedAttributes) {
+        if (!$insert && !empty($changedAttributes)) {
+            // Try and find a user attached to this person
+            $user = User::find()->where(['person_id' => $this->id])->one();
+            if (!is_null($user)) {
+                UserLog::add(UserLog::ACTION_UPDATE, UserLog::RESULT_SUCCESS, $user->id, 'Person Model: ' . VarDumper::dumpAsString($changedAttributes));
+            }
+        }
+        parent::afterSave($insert, $changedAttributes);
+    }
 }
