@@ -74,7 +74,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
             [['username', 'email'], 'trim'],
             [['email'], 'email'],
             [['email', 'email_confirm'], 'string', 'max' => 255],
-            [['email'], 'unique'],
+            [['email'], 'unique', 'except' => ['forgotPassword']],
             [['username'], 'default', 'value' => null],
             [['status'], 'filter', 'filter' => 'intval'],
             [['status'], 'default', 'value' => static::STATUS_NEW],
@@ -89,9 +89,9 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
                 'message' => "{attribute} can contain only letters, numbers or underscores."],
             [['username'], 'unique', 'message' => 'This username is already in use.'],
             [['password', 'password_confirm'], 'string', 'length' => [5, 255]],
-            [['password_confirm'], 'required', 'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername']],
+            [['password_confirm'], 'required', 'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword']],
             [['password_confirm'], 'compare', 'compareAttribute' => 'password', 'message' => 'Passwords do not match.',
-                'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername']],
+                'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword']],
             [['email_confirm'], 'required', 'on' => ['registerEmailConfirm']],
             [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Email Addresses do not match.',
                 'on' => ['registerEmailConfirm']],
@@ -167,10 +167,9 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
             $this->generateAuthKey();
             UserLog::add(UserLog::ACTION_CREATE, UserLog::RESULT_SUCCESS, $this->id);
         } else {
-            // Ignore updated_at col
-            $updatedAt = ArrayHelper::remove($changedAttributes, 'updated_at', null);
-            if (!empty($changedAttributes)) {
-                UserLog::add(UserLog::ACTION_UPDATE, UserLog::RESULT_SUCCESS, $this->id, 'User Model: ' . VarDumper::dumpAsString($changedAttributes));
+            $filteredChangedAttributes = array_diff($changedAttributes, ['updated_at', 'password']);
+            if (!empty($filteredChangedAttributes)) {
+                UserLog::add(UserLog::ACTION_UPDATE, UserLog::RESULT_SUCCESS, $this->id, 'User Model: ' . VarDumper::dumpAsString($filteredChangedAttributes));
             }
             if (in_array('status', array_keys($changedAttributes)) && $changedAttributes['status'] == static::STATUS_NEW && $this->status == static::STATUS_ACTIVE) {
                 UserLog::add(UserLog::ACTION_EMAIL, UserLog::RESULT_SUCCESS, $this->id, "Sent user activation email to ".$this->email.".");
@@ -235,30 +234,22 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      * @inheritdoc
      */
     public static function findIdentity($id) {
-        return static::find()->where([static::tableName() . '.id' => $id])->active()->one();
+        return static::find()->andWhere([static::tableName() . '.id' => $id])->active()->one();
     }
+
+    /**
+     * @param string $key
+     * @return static|null
+     */
+    public static function findByResetPasswordKey($key) {
+        return static::find()->andWhere(['user_key' => $key])->joinWith('resetPasswordUserKey')->active()->one();
+    }
+
     /**
      * @inheritdoc
      */
     public static function findIdentityByAccessToken($token, $type = null) {
         throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
-    }
-
-    /**
-     * Finds user by
-     *
-     * @param string $key
-     * @param integer $statusId
-     * @return static|null
-     */
-    public static function findByResetPasswordKey($key, $statusId = self::STATUS_ACTIVE) {
-        $condition = [
-            UserKey::tableName() . '.user_key' => $key
-        ];
-        if (!is_null($statusId)) {
-            $condition['status'] = $statusId;
-        }
-        return static::find()->andWhere($condition)->joinWith('resetPasswordUserKey')->one();
     }
     /**
      * Validates password

@@ -27,10 +27,9 @@ use wmc\helpers\IPHelper;
 class UserCooldownLog extends \wmc\db\ActiveRecord
 {
     const ACTION_LOGIN = 1;
-    const ACTION_RESET_PASSWORD_USER = 3;
-    const ACTION_RESET_PASSWORD_EMAIL = 4;
-    const ACTION_CONFIRM_EMAIL_KEY = 5;
-    const ACTION_ACCESS = 6;
+    const ACTION_RESET_PASSWORD = 2;
+    const ACTION_CONFIRM_EMAIL = 3;
+    const ACTION_ACCESS = 4;
 
     const RESULT_NO_RECORD = 1;
     const RESULT_NEW = 2;

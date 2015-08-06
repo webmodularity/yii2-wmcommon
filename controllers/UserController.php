@@ -32,12 +32,6 @@ class UserController extends \yii\web\Controller
         'forgotPassword' => 'forgot-password',
         'resetPassword' => 'reset-password'
     ];
-    /**
-     * Where to send browser after successful login, defaults to null.
-     * @var string|array|null Non-null values will be passed to yii\web\Controller::redirect($url),
-     * A null value (default) returns to last page using yii\web\Controller::goBack()
-     */
-    public $loginRedirect = null;
 
 
     public function behaviors() {
@@ -90,11 +84,7 @@ class UserController extends \yii\web\Controller
             if ($model->load(Yii::$app->request->post()) && $model->login()) {
                 // Successful login
                 UserLog::add(UserLog::ACTION_LOGIN, UserLog::RESULT_SUCCESS);
-                if (is_null($this->loginRedirect)) {
-                    return $this->goBack();
-                } else {
-                    return $this->redirect($this->loginRedirect);
-                }
+                return $this->redirect(Yii::$app->user->returnUrl);
             } else {
                 // Bad User/Pass combo
                 // Warn if cooldown is reached or approaching
@@ -143,118 +133,111 @@ class UserController extends \yii\web\Controller
         Yii::$app->alertManager->add(Alert::widget([
             'heading' => 'User session cleared.',
             'message' => 'Successfully Logged Out',
-            'style' => 'success',
-            'icon' => 'sign-out'
+            'style' => 'success'
         ]));
         return $this->goHome();
     }
 
     public function actionForgotPassword() {
-        $model = $this->userType === 'username' ? new ForgotPasswordForm() : new ForgotPasswordEmailForm();
-        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            if ($this->userType === 'username') {
-                $user = User::find()->where(['username' => $model->username])->active()->one();
-            } else {
-                $user = User::find()->where(['email' => $model->email])->active()->one();
-            }
+        $model = new User(['scenario' => 'forgotPassword']);
+        if ($model->load(Yii::$app->request->post()) && $model->validate(['email'])) {
+            $user = User::find()->where(['email' => $model->email])->active()->one();
 
             if (!is_null($user)) {
                 // Lets make sure we don't have any recent password resets for this user
-                $recentRequests = UserLog::find()->recent("PT2M")->andWhere(
-                    [
-                        'user_id' => $user->id,
-                        'app' => UserLog::APP_FRONTEND,
-                        'action_type' => UserLog::ACTION_RESET_PASSWORD,
-                        'result_type' => UserLog::RESULT_REQUEST
-                    ])->count();
+                $recentRequests = UserLog::find()->recent("PT2M")->andWhere(['user_id' => $user->id,
+                    'action_type' => UserLog::ACTION_RESET_PASSWORD, 'result_type' => UserLog::RESULT_REQUEST
+                ])->count();
                 if ($recentRequests < 1) {
-                    $userKey = UserKey::generateKey($user->id, UserKey::TYPE_RESET_PASSWORD);
-                    UserLog::add(UserLog::ACTION_RESET_PASSWORD, UserLog::RESULT_REQUEST, $user->id);
-                    // Generate Email
-                    $this->sendResetPasswordEmail($user, $userKey);
-                    Yii::$app->alertManager->add(Alert::widget([
-                        'heading' => 'Password Reset Request Sent.',
-                        'message' => 'An email has been sent to the registered email address with instructions on how to reset
+                    $userKey = new UserKey([
+                        'user_id' => $user->id,
+                        'type' => UserKey::TYPE_RESET_PASSWORD,
+                        'user_key' => UserKey::generateKey()
+                    ]);
+                    if ($userKey->save()) {
+                        UserLog::add(UserLog::ACTION_RESET_PASSWORD, UserLog::RESULT_REQUEST, $user->id);
+                        // Generate Email
+                        $this->sendResetPasswordEmail($user, $userKey);
+                        Yii::$app->alertManager->add(Alert::widget([
+                            'heading' => 'Password Reset Request Sent.',
+                            'message' => 'An email has been sent to the registered email address with instructions on how to reset
                         your password. Further action is required, please check your email.',
-                        'style' => 'success',
-                        'icon' => 'hand-o-right'
-                    ]));
+                            'style' => 'success'
+                        ]));
+                    } else {
+                        UserLog::add(UserLog::ACTION_RESET_PASSWORD, UserLog::RESULT_FAIL, $user->id);
+                        Yii::$app->alertManager->add(Alert::widget([
+                            'heading' => 'Failed to Send Password Reset Request.',
+                            'message' => 'We have encountered an error while attempting to send reset password email.
+                            Sorry for the inconvenience, please contact us for further assistance.',
+                            'style' => 'danger'
+                        ]));
+                    }
                 } else {
                     UserLog::add(UserLog::ACTION_RESET_PASSWORD, UserLog::RESULT_COOLDOWN, $user->id);
-                    UserCooldownLog::add($this->getFailedReason($model), UserCooldownLog::RESULT_COOLDOWN);
+                    UserCooldownLog::add(UserCooldownLog::ACTION_RESET_PASSWORD, UserCooldownLog::RESULT_COOLDOWN);
                     Yii::$app->alertManager->add(Alert::widget([
                         'heading' => 'Password Request Email Already Sent!',
                         'message' => "The system has detected a recent password reset request for this account. Please check your
                         email (make sure it didn't end up in spam folder) for the password reset instructions.",
-                        'style' => 'warning',
-                        'icon' => 'warning'
+                        'style' => 'warning'
                     ]));
                 }
             } else {
-                UserCooldownLog::add($this->getFailedReason($model), UserCooldownLog::RESULT_FAIL);
+                UserCooldownLog::add(UserCooldownLog::ACTION_RESET_PASSWORD, UserCooldownLog::RESULT_FAIL);
                 Yii::$app->alertManager->add(Alert::widget([
                     'heading' => 'No Account Found!',
                     'message' => 'Failed to send password reset request, unable to locate user.',
-                    'style' => 'danger',
-                    'icon' => 'times'
+                    'style' => 'danger'
                 ]));
             }
-            return Yii::$app->response->refresh();
+            return $this->goHome();
         }
         return $this->render($this->viewFile['forgotPassword'], ['model' => $model]);
     }
 
-    private function getFailedReason($model) {
-        if ($this->userType === 'username') {
-            $failedReason = !$model->email
-                ? UserCooldownLog::ACTION_RESET_PASSWORD_USER
-                : UserCooldownLog::ACTION_RESET_PASSWORD_EMAIL;
-        } else {
-            $failedReason = UserCooldownLog::ACTION_RESET_PASSWORD_EMAIL;
-        }
-        return $failedReason;
-    }
-
     public function actionResetPassword($key) {
-        if (UserKey::isValidKey($key)) {
-            try {
-                $model = new ResetPasswordForm($key);
-            } catch (InvalidParamException $e) {
-                UserCooldownLog::add($this->getFailedReason($model), UserCooldownLog::RESULT_FAIL);
+        $userKey = new UserKey(['user_key' => $key]);
+        if (!empty($key) && $userKey->validate(['user_key'])) {
+            $user = User::findByResetPasswordKey($key);
+            if (is_null($user)) {
+                UserCooldownLog::add(UserCooldownLog::ACTION_RESET_PASSWORD, UserCooldownLog::RESULT_FAIL);
                 Yii::$app->alertManager->add(Alert::widget([
                     'heading' => 'Password Reset Failed!',
                     'message' => "Failed to complete password reset. Your password reset link may have expired. You may try and
-                    use the ".Html::a('Forgot Password Tool', ['forgot-password'], ['class' => 'alert-link'])." again
+                    use the " . Html::a('Forgot Password Tool', ['forgot-password'], ['class' => 'alert-link']) . " again
                     to generate a new link.",
                     'style' => 'danger',
-                    'icon' => 'times',
                     'encode' => false
                 ]));
                 return $this->redirect(Yii::$app->user->loginUrl);
-            }
-
-            if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-                $reset = $model->resetPassword();
-                if ($reset) {
-                    Yii::$app->alertManager->add(Alert::widget([
-                        'heading' => 'Password Reset Successful!',
-                        'message' => 'Your password has been reset, you may now log in using your new password.',
-                        'style' => 'success',
-                        'icon' => 'hand-o-right'
-                    ]));
-                    $this->sendResetPasswordSuccessEmail($model->user);
-                } else {
-                    Yii::$app->alertManager->add(Alert::widget([
-                        'heading' => 'Password Reset Failed!',
-                        'message' => 'Failed to complete password reset, please contact us for further assistance.',
-                        'style' => 'danger',
-                        'icon' => 'times'
-                    ]));
+            } else {
+                $userModel = new User(['scenario' => 'resetPassword']);
+                if ($userModel->load(Yii::$app->request->post()) && $userModel->validate(['password', 'password_confirm'])) {
+                    $user->setPassword($userModel->password);
+                    UserLog::add(UserLog::ACTION_RESET_PASSWORD, UserLog::RESULT_SUCCESS, $user->id);
+                    $user->resetPasswordUserKey->delete();
+                    if ($user->save()) {
+                        Yii::$app->alertManager->add(Alert::widget([
+                            'heading' => 'Password Reset Successful!',
+                            'message' => 'Your password has been reset, you may now log in using your new password.',
+                            'style' => 'success'
+                        ]));
+                        $this->sendResetPasswordSuccessEmail($user);
+                    } else {
+                        Yii::$app->alertManager->add(Alert::widget([
+                            'heading' => 'Password Reset Failed!',
+                            'message' => 'Failed to complete password reset, please contact us for further assistance.',
+                            'style' => 'danger'
+                        ]));
+                    }
+                    return $this->redirect(Yii::$app->user->loginUrl);
                 }
-                return $this->redirect(Yii::$app->user->loginUrl);
+
+                return $this->render($this->viewFile['resetPassword'], ['model' => $userModel]);
             }
-            return $this->render($this->viewFile['resetPassword'], ['model' => $model]);
         } else {
+            Yii::error("UserKey was invalid (".Html::encode($key).") on reset password request!");
             throw new ForbiddenHttpException("Unrecognized user key specified!");
         }
     }
@@ -264,8 +247,7 @@ class UserController extends \yii\web\Controller
             'heading' => "Account Locked!",
             'message' => 'The system has detected too many failed login attempts from '
                 . 'this location and has temporarily locked it, preventing any user related activity.',
-            'style' => 'danger',
-            'icon' => 'ban'
+            'style' => 'danger'
         ]));
     }
 
@@ -276,13 +258,12 @@ class UserController extends \yii\web\Controller
                 .' If you need further assistance please contact the site administrator. Further failed attempts
                 will result in your account being locked.',
             'style' => 'warning',
-            'icon' => 'warning',
             'encode' => false,
         ]));
     }
 
     protected function sendResetPasswordEmail($user, $userKey) {
-        Yii::$app->mailer->compose('@wmu/mail/reset-password', ['user' => $user, 'userKey' => $userKey])
+        Yii::$app->mailer->compose('@wmc/mail/user/reset-password', ['user' => $user, 'userKey' => $userKey])
             ->setFrom(Yii::$app->params['noReplyEmail'])
             ->setTo($user->email)
             ->setSubject(Yii::$app->params['siteName'] . ' Password Reset Request')
@@ -290,7 +271,7 @@ class UserController extends \yii\web\Controller
     }
 
     protected function sendResetPasswordSuccessEmail($user) {
-        Yii::$app->mailer->compose('@wmu/mail/reset-password-success', ['user' => $user])
+        Yii::$app->mailer->compose('@wmc/mail/user/reset-password-success', ['user' => $user])
             ->setFrom(Yii::$app->params['noReplyEmail'])
             ->setTo($user->email)
             ->setSubject(Yii::$app->params['siteName'] . ' Password Reset Success')

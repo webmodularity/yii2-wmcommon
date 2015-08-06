@@ -30,11 +30,6 @@ class UserKey extends \wmc\db\ActiveRecord
         self::TYPE_CONFIRM_EMAIL => 'P7D'
     ];
 
-    /**
-     * @var int 1-100/100 expired key cleanup
-     **/
-    public $gc_probability = 10;
-
     public function behaviors() {
         return [
             [
@@ -58,6 +53,9 @@ class UserKey extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
+            [['type', 'user_id', 'user_key'], 'required'],
+            [['type', 'user_id'], 'integer'],
+            [['user_key'], 'match', 'pattern' => '/^[A-Za-z0-9_-]{32}$/']
         ];
     }
 
@@ -90,7 +88,7 @@ class UserKey extends \wmc\db\ActiveRecord
         if (parent::beforeSave($insert)) {
              if ($insert === true) {
                  // Check for (and remove) an expired key of this type
-                 $expiredUserKey = static::findByUser($this->user_id, $this->type, true);
+                 $expiredUserKey = static::find()->where(['user_id' => $this->user_id, 'type' => $this->type])->one();
                  if (!is_null($expiredUserKey)) {
                      UserLog::add(UserLog::ACTION_USER_KEY, UserLog::RESULT_EXPIRED, $expiredUserKey->user_id, $expiredUserKey->expire);
                      $expiredUserKey->delete();
@@ -99,12 +97,11 @@ class UserKey extends \wmc\db\ActiveRecord
                  if (!empty($expireInterval)) {
                      $date = new \DateTime();
                      $date->add(new \DateInterval($expireInterval));
-                     $expire = static::getMysqlDatetime($date);
+                     $expire = $date->format('Y-m-d H:i:s');
                  } else {
                      $expire = null;
                  }
                  $this->expire = $expire;
-                 $this->user_key = Yii::$app->security->generateRandomString();
              }
             return true;
         } else {
@@ -112,59 +109,25 @@ class UserKey extends \wmc\db\ActiveRecord
         }
     }
 
-    public function afterFind() {
-        // Clean up old records
-        if (mt_rand(1,100) <= $this->gc_probability) {
-            $this->expiredGarbageCollection();
+    public function afterSave($insert, $changedAttributes) {
+        // Garbage Collection
+        $date = new \DateTime();
+        $date->sub(new \DateInterval(static::getExpireInterval()));
+        $garbageDate = static::getMysqlDatetime($date);
+        $expiredKeys = static::find()->where('expire IS NOT NULL AND expire <= :expire', [':expire' => $garbageDate])->all();
+
+        $deleteIds = [];
+        foreach ($expiredKeys as $expiredKey) {
+            UserLog::add(UserLog::ACTION_USER_KEY, UserLog::RESULT_EXPIRED, $expiredKey->user_id, $expiredKey->expire);
+            $deleteIds[] = $expiredKey->id;
         }
-        parent::afterFind();
+        static::deleteAll(['id' => $deleteIds]);
+
+        parent::afterSave($insert, $changedAttributes);
     }
 
-    public static function findByKey($key, $typeId, $allowExpired = false) {
-        $query = $allowExpired === false
-            ? 'user_key = :key AND type = :type AND expire > NOW()'
-            : 'user_key = :key AND type = :type';
-        $queryParams = [
-            ':key' => $key,
-            ':type' => $typeId
-        ];
-        return static::find()->where($query, $queryParams)->one();
-    }
-
-    public static function findByUser($userId, $typeId, $allowExpired = false) {
-        $query = $allowExpired === false
-            ? 'user_id = :user_id AND type = :type AND expire > NOW()'
-            : 'user_id = :user_id AND type = :type';
-        $queryParams = [
-            ':user_id' => $userId,
-            ':type' => $typeId
-        ];
-        return static::find()->where($query, $queryParams)->one();
-    }
-
-    public static function generateKey($userId, $typeId) {
-        // First check for existing (non-expired) key
-        $key = static::findByUser($userId, $typeId, false);
-        if (!empty($key)) {
-            return $key;
-        }
-        $saved = false;
-        $loops = 0;
-        while ($saved !== true) {
-            try {
-                $loops++;
-                $key = new UserKey();
-                $key->user_id = $userId;
-                $key->type = $typeId;
-                $saved = $key->save();
-            } catch (IntegrityException $e) {
-                $saved = false;
-            }
-            if ($loops >= 6) {
-                return null;
-            }
-        }
-        return $key;
+    public static function generateKey() {
+        return Yii::$app->security->generateRandomString();
     }
 
     public static function getExpireInterval($type = 'garbage') {
@@ -178,31 +141,7 @@ class UserKey extends \wmc\db\ActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getUser()
-    {
-        return $this->hasOne(User::className(), ['person_id' => 'user_id']);
-    }
-
-    protected function expiredGarbageCollection() {
-        $date = new \DateTime();
-        $date->sub(new \DateInterval(static::getExpireInterval()));
-        $garbageDate = static::getMysqlDatetime($date);
-        $expiredKeys = static::find()->where(
-            'expire IS NOT NULL AND expire <= :expire',
-            [
-                ':expire' => $garbageDate
-            ]
-        )->all();
-
-        $deleteIds = [];
-        foreach ($expiredKeys as $expiredKey) {
-            UserLog::add(UserLog::ACTION_USER_KEY, UserLog::RESULT_EXPIRED, $expiredKey->user_id, $expiredKey->expire);
-            $deleteIds[] = $expiredKey->id;
-        }
-        static::deleteAll(['id' => $deleteIds]);
-    }
-
-    public static function isValidKey($key) {
-        return preg_match("/^[A-Za-z0-9_-]{32}$/", $key) ? true : false;
+    public function getUser() {
+        return $this->hasOne(User::className(), ['id' => 'user_id']);
     }
 }
