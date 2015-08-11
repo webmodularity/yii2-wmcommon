@@ -23,11 +23,13 @@ class UserKey extends \wmc\db\ActiveRecord
     const TYPE_AUTH = 1;
     const TYPE_RESET_PASSWORD = 2;
     const TYPE_CONFIRM_EMAIL = 3;
+    const TYPE_CHANGE_EMAIL = 4;
 
     public static $expireIntervals = [
         'garbage' => "P30D",
         self::TYPE_RESET_PASSWORD => 'P1D',
-        self::TYPE_CONFIRM_EMAIL => 'P7D'
+        self::TYPE_CONFIRM_EMAIL => 'P7D',
+        self::TYPE_CHANGE_EMAIL => 'P1D'
     ];
 
     public function behaviors() {
@@ -95,7 +97,7 @@ class UserKey extends \wmc\db\ActiveRecord
                  }
                  $expireInterval = static::getExpireInterval($this->type);
                  if (!empty($expireInterval)) {
-                     $date = new \DateTime();
+                     $date = new \DateTime(NULL, new \DateTimeZone('UTC'));
                      $date->add(new \DateInterval($expireInterval));
                      $expire = $date->format('Y-m-d H:i:s');
                  } else {
@@ -111,7 +113,7 @@ class UserKey extends \wmc\db\ActiveRecord
 
     public function afterSave($insert, $changedAttributes) {
         // Garbage Collection
-        $date = new \DateTime();
+        $date = new \DateTime(NULL, new \DateTimeZone('UTC'));
         $date->sub(new \DateInterval(static::getExpireInterval()));
         $garbageDate = static::getMysqlDatetime($date);
         $expiredKeys = static::find()->where('expire IS NOT NULL AND expire <= :expire', [':expire' => $garbageDate])->all();

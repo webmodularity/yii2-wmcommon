@@ -42,6 +42,8 @@ class UserLog extends \wmc\db\ActiveRecord
     const ACTION_ACCESS = 7;
     const ACTION_UPDATE = 8;
     const ACTION_EMAIL = 9;
+    const ACTION_CHANGE_PASSWORD = 10;
+    const ACTION_CHANGE_EMAIL = 11;
 
     const RESULT_SUCCESS = 1;
     const RESULT_FAIL = 2;
@@ -195,7 +197,9 @@ class UserLog extends \wmc\db\ActiveRecord
             static::ACTION_RESET_PASSWORD => "Password Reset",
             static::ACTION_USER_KEY => "User Key",
             static::ACTION_ACCESS => "Access",
-            static::ACTION_EMAIL => "Email"
+            static::ACTION_EMAIL => "Email",
+            static::ACTION_CHANGE_PASSWORD => "Change Password",
+            static::ACTION_CHANGE_EMAIL => "Change Email"
 
         ];
     }

@@ -38,26 +38,26 @@ class LoginFormEmail extends LoginForm
     }
 
     /**
-     * Finds user by [[email]]
+     * Finds ACTIVE user by [[email]]
      *
      * @return User|null
      */
     public function getUser() {
-        if ($this->_user === false) {
-            $this->_user = User::find()->where(['email' => $this->email])->active()->one();
-            if (is_null($this->_user)) {
-                $this->_invalidUser = User::find()->where(['email' => $this->email])->inactive()->one();
-            }
-        }
-        return $this->_user;
+        return User::find()->where(['email' => $this->email])->active()->one();
     }
 
-    public function getInactiveUser() {
-        return $this->_invalidUser;
+    /**
+     * Finds ANY user (active or disabled) by [[email]]
+     *
+     * @return User|null
+     */
+
+    public function getFailedUser() {
+        return User::find()->where(['email' => $this->email])->one();
     }
 
     protected function invalidLogin() {
-        $this->email = $this->password = '';
+        $this->password = '';
         $this->addError('password', 'Unrecognized email/password combination.');
         $this->addError('email', 'Unrecognized email/password combination.');
     }

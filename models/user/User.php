@@ -33,6 +33,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
     public $captcha;
     public $email_confirm;
     public $password_confirm;
+    public $old_password;
 
     const STATUS_DELETED = -1;
     const STATUS_ACTIVE = 1;
@@ -88,13 +89,14 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
             [['username'], 'match', 'pattern' => '/^[A-Za-z0-9_]+$/u',
                 'message' => "{attribute} can contain only letters, numbers or underscores."],
             [['username'], 'unique', 'message' => 'This username is already in use.'],
-            [['password', 'password_confirm'], 'string', 'length' => [5, 255]],
-            [['password_confirm'], 'required', 'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword']],
+            [['password', 'password_confirm', 'old_password'], 'string', 'length' => [5, 255]],
+            [['old_password'], 'required', 'on' => ['changePassword', 'changeEmail']],
+            [['password_confirm'], 'required', 'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword', 'changePassword']],
             [['password_confirm'], 'compare', 'compareAttribute' => 'password', 'message' => 'Passwords do not match.',
-                'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword']],
-            [['email_confirm'], 'required', 'on' => ['registerEmailConfirm']],
+                'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername', 'resetPassword', 'changePassword']],
+            [['email_confirm'], 'required', 'on' => ['registerEmailConfirm', 'changeEmail']],
             [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Email Addresses do not match.',
-                'on' => ['registerEmailConfirm']],
+                'on' => ['registerEmailConfirm', 'changeEmail']],
             [['captcha'], 'wmc\modules\recaptcha\validators\RecaptchaValidator',
                 'incorrectMessage' => "Failed to verify reCaptcha field.",
                 'emptyMessage' => "Please confirm you aren't a robot.",
@@ -117,6 +119,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
             'password_confirm' => 'Confirm Password',
+            'old_password' => 'Current Password',
             'email_confirm' => 'Confirm Email',
             'captcha' => 'ReCaptcha'
         ];
@@ -226,6 +229,13 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
     /**
      * @return \yii\db\ActiveQuery
      */
+    public function getChangeEmailUserKey() {
+        return $this->hasOne(UserKey::className(), ['user_id' => 'id'])->where(['type' => UserKey::TYPE_CHANGE_EMAIL]);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
     public function getUserLogs() {
         return $this->hasMany(UserLog::className(), ['user_id' => 'id']);
     }
@@ -243,6 +253,14 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      */
     public static function findByResetPasswordKey($key) {
         return static::find()->andWhere(['user_key' => $key])->joinWith('resetPasswordUserKey')->active()->one();
+    }
+
+    /**
+     * @param string $key
+     * @return static|null
+     */
+    public static function findByChangeEmailKey($key) {
+        return static::find()->andWhere(['user_key' => $key])->joinWith('changeEmailUserKey')->active()->one();
     }
 
     /**

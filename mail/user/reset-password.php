@@ -2,7 +2,7 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-$resetLink = Url::to(["/user/reset-password", 'key' => $userKey->user_key], true);
+$resetLink = Url::to(["/user/reset-password", 'key' => $userKey], true);
 $this->title = "Password Reset Request";
 ?>
 <?= $user->person->fullName ?>,

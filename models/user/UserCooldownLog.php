@@ -30,6 +30,8 @@ class UserCooldownLog extends \wmc\db\ActiveRecord
     const ACTION_RESET_PASSWORD = 2;
     const ACTION_CONFIRM_EMAIL = 3;
     const ACTION_ACCESS = 4;
+    const ACTION_CHANGE_PASSWORD = 5;
+    const ACTION_CHANGE_EMAIL = 6;
 
     const RESULT_NO_RECORD = 1;
     const RESULT_NEW = 2;
@@ -175,7 +177,7 @@ class UserCooldownLog extends \wmc\db\ActiveRecord
         if (is_null($ip)) {
             $ip = IPHelper::toBinaryIp(Yii::$app->request->getUserIP());
         }
-        $intervalTime = new \DateTime();
+        $intervalTime = new \DateTime(NULL, new \DateTimeZone("UTC"));
         $intervalTime->sub(new \DateInterval(static::$cooldownInterval));
         $createdAtTime = static::getMysqlDatetime($intervalTime);
         return static::find()->where(
