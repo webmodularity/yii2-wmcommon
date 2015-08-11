@@ -298,9 +298,10 @@ class UserController extends \yii\web\Controller
                     Yii::$app->user->logout();
                 }
                 if (isset($logData['key']) && $logData['key'] == $key && isset($logData['email']) && !empty($logData['email'])) {
+                    $oldEmail = $user->email;
                     $user->email = $logData['email'];
                     if ($user->save()) {
-                        $this->sendRemovedEmail($user);
+                        $this->sendRemovedEmail($user, $oldEmail);
                         UserLog::add(UserLog::ACTION_CHANGE_EMAIL, UserLog::RESULT_SUCCESS, $user->id, "New Email: ".$user->email."");
                         Yii::$app->alertManager->add(Alert::widget([
                             'heading' => 'Email Change Successful!',
@@ -379,10 +380,10 @@ class UserController extends \yii\web\Controller
             ->send();
     }
 
-    protected function sendRemovedEmail($user) {
-        Yii::$app->mailer->compose('@wmc/mail/user/removed-email', ['user' => $user])
+    protected function sendRemovedEmail($user, $oldEmail) {
+        Yii::$app->mailer->compose('@wmc/mail/user/removed-email', ['user' => $user, 'oldEmail' => $oldEmail])
             ->setFrom(Yii::$app->params['noReplyEmail'])
-            ->setTo($user->email)
+            ->setTo($oldEmail)
             ->setSubject(Yii::$app->params['siteName'] . ' Email Address Removed')
             ->send();
     }
