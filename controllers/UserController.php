@@ -203,7 +203,7 @@ class UserController extends \yii\web\Controller
                 $user->setPassword($model->password);
                 if ($user->save(false)) {
                     UserLog::add(UserLog::ACTION_CHANGE_PASSWORD, UserLog::RESULT_SUCCESS);
-                    Yii::$app->user->logout();
+                    Yii::$app->user->logout(false);
                     Yii::$app->alertManager->add(Alert::widget([
                         'heading' => 'Change Password Successful!',
                         'message' => 'Your password has been changed, you may now log in using your new password.',
@@ -295,7 +295,7 @@ class UserController extends \yii\web\Controller
                 ])->orderBy(['id' => SORT_DESC])->limit(1)->one();
                 $logData = Json::decode($log->data, true);
                 if (!Yii::$app->user->isGuest) {
-                    Yii::$app->user->logout();
+                    Yii::$app->user->logout(false);
                 }
                 if (isset($logData['key']) && $logData['key'] == $key && isset($logData['email']) && !empty($logData['email'])) {
                     $oldEmail = $user->email;
