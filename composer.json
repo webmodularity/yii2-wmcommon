@@ -19,6 +19,7 @@
     "zelenin/yii2-recaptcha-widget": "*",
     "creocoder/yii2-nested-sets": "*",
     "kartik-v/yii2-widget-select2": "*",
+    "kartik-v/yii2-widget-datetimepicker": "*",
     "bower-asset/bootstrap-tagsinput": "*"
   },
   "config": {
