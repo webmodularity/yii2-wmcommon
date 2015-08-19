@@ -68,7 +68,6 @@ class UserSearch extends User
         ];
 
         if (!$this->validate()) {
-            die(var_dump($this));
             // uncomment the following line if you do not want to any records when validation fails
             $query->where('0=1');
             return $dataProvider;

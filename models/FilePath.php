@@ -52,4 +52,21 @@ class FilePath extends \wmc\db\ActiveRecord
     {
         return $this->hasMany(File::className(), ['file_path_id' => 'id']);
     }
+
+    public static function findByPath($path) {
+        $path = rtrim($path, DIRECTORY_SEPARATOR);
+        $filePath = static::find()->where(['path' => $path])->one();
+        if (empty($filePath)) {
+            $filePath = new FilePath(
+                [
+                    'path' => $path,
+                    'alias' => basename($path)
+                ]
+            );
+            if (!$filePath->save()) {
+                return null;
+            }
+        }
+        return $filePath;
+    }
 }

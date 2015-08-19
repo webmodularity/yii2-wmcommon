@@ -108,7 +108,7 @@ class File extends \wmc\db\ActiveRecord
         return $this->hasMany(UserGroup::className(), ['id' => 'user_group_id'])->viaTable('{{%file_access}}', ['file_id' => 'id']);
     }
 
-    public static function findFileFromFilename($filename) {
+    public static function findFileFromFilename($filename, $pathAlias = '') {
         if (empty($filename) || !is_string($filename)) {
             return null;
         }
@@ -120,7 +120,7 @@ class File extends \wmc\db\ActiveRecord
         if (empty($alias) || empty($extension)) {
             return null;
         } else {
-            return static::find()->where(['alias' => $alias, 'extension' => $extension,'status' => 1])->joinWith('fileType')->one();
+            return static::find()->where([static::tableName() . '.alias' => $alias, 'extension' => $extension, FilePath::tableName() . '.alias' => $pathAlias, 'status' => 1])->joinWith(['fileType', 'filePath'])->one();
         }
     }
 
@@ -139,5 +139,16 @@ class File extends \wmc\db\ActiveRecord
             return $access > 0 ? true : false;
         }
         return false;
+    }
+
+    public function afterDelete() {
+        // Attempt to remove file
+        $filePath = FilePath::findOne($this->file_path_id);
+        $fileType = FileType::findOne($this->file_type_id);
+        if (!empty($filePath) && !empty($fileType)) {
+            $filename = Yii::getAlias($filePath->path) . DIRECTORY_SEPARATOR . $this->name . '.' . $fileType->extension;
+            @unlink($filename);
+        }
+        parent::afterDelete();
     }
 }

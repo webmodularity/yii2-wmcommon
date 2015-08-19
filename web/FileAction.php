@@ -9,8 +9,8 @@ use yii\web\NotFoundHttpException;
 
 class FileAction extends \yii\base\Action
 {
-    public function run($filename) {
-        $file = File::findFileFromFilename($filename);
+    public function run($filename, $pathAlias = '') {
+        $file = File::findFileFromFilename($filename, $pathAlias);
 
         if (is_null($file)) {
             Yii::warning("FileAction 404 on (".$filename.")");

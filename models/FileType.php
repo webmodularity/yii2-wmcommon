@@ -51,4 +51,8 @@ class FileType extends \wmc\db\ActiveRecord
             'allow_inline' => 'Allow Inline',
         ];
     }
+
+    public static function findByExtension($extension) {
+        return static::find()->where(['extension' => strtolower($extension)])->one();
+    }
 }
