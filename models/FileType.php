@@ -3,6 +3,7 @@
 namespace wmc\models;
 
 use Yii;
+use yii\helpers\FileHelper;
 
 /**
  * This is the model class for table "common.file_type".
@@ -52,7 +53,25 @@ class FileType extends \wmc\db\ActiveRecord
         ];
     }
 
-    public static function findByExtension($extension) {
-        return static::find()->where(['extension' => strtolower($extension)])->one();
+    /**
+     * Should be called BEFOREE move_uploaded_file call!
+     * @param $uploadedFile UploadedFile
+     * @return FileType Tries to find FileType based first on extension but falls back to first available mimi-type match (sorted by id ASC)
+     */
+
+    public static function findByUploadedFile($uploadedFile) {
+        $fileType = null;
+        // Check by extension first
+        if (!empty($uploadedFile->extension)) {
+            $fileType = static::find()->where(['extension' => strtolower($uploadedFile->extension)])->one();
+        }
+        if (empty($fileType)) {
+            // Try and find by MIME (using FileHelper to get actual MIME type)
+            $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
+            if (!empty($mimeType)) {
+                $fileType = static::find()->where(['mime_type' => $mimeType])->orderBy(['id' => SORT_ASC])->limit(1)->one();
+            }
+        }
+        return $fileType;
     }
 }

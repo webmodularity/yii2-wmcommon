@@ -5,6 +5,7 @@ namespace wmc\models;
 use Yii;
 use wmc\models\user\UserGroup;
 use wmc\behaviors\TimestampBehavior;
+use yii\base\InvalidCallException;
 
 /**
  * This is the model class for table "file".
@@ -150,5 +151,19 @@ class File extends \wmc\db\ActiveRecord
             @unlink($filename);
         }
         parent::afterDelete();
+    }
+
+    public static function normalizeUploadedFileName($name, $extension, $path) {
+        $normalizedName = static::sanitizeUploadedFileName($name);
+        $count = 0;
+        while (file_exists(Yii::getAlias($path . DIRECTORY_SEPARATOR . $normalizedName . '.' . $extension))) {
+            $count++;
+            $normalizedName = static::sanitizeUploadedFileName($name) . '_' . $count;
+        }
+        return $normalizedName;
+    }
+
+    public static function sanitizeUploadedFileName($name) {
+        return preg_replace("/[^A-Za-z0-9\-_]/", '', str_replace(['.', ':', ';', "'", '~'], '-', str_replace(' ', '_', $name)));
     }
 }
