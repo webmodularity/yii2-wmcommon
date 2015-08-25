@@ -308,7 +308,17 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
      * Generates "remember me" authentication key
      */
     public function generateAuthKey() {
-        UserKey::generateKey($this->id, UserKey::TYPE_AUTH);
+        $userKey = new UserKey([
+            'user_id' => $this->id,
+            'type' => UserKey::TYPE_AUTH,
+            'user_key' => UserKey::generateKey()
+        ]);
+        if (!$userKey->save()) {
+            Yii::error("Failed to generated User Auth Key! " . VarDumper::dumpAsString($userKey->getErrors()), 'user');
+            return false;
+        } else {
+            return true;
+        }
     }
 
     public function getUserIdentifier() {
