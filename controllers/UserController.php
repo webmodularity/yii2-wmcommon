@@ -38,14 +38,18 @@ class UserController extends \yii\web\Controller
                 'class' => AccessControl::className(),
                 'rules' => [
                     [
-                        'allow' => true,
-                        'actions' => ['login', 'register', 'forgot-password', 'reset-password', 'reset-email'],
+                        'allow' => false,
+                        'actions' => ['logout', 'forgot-password', 'reset-password', 'profile', 'change-password', 'change-email', 'reset-email'],
                         'roles' => ['?'],
                     ],
                     [
                         'allow' => true,
                         'actions' => ['logout', 'forgot-password', 'reset-password', 'profile', 'change-password', 'change-email', 'reset-email'],
                         'roles' => ['@'],
+                    ],
+                    [
+                        'allow' => true,
+                        'roles' => ['?']
                     ]
                 ],
             ],
