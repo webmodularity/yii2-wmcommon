@@ -1,6 +1,6 @@
 <?php
 
-namespace wmc\bootstrap;
+namespace wmc\widgets\input;
 
 use Yii;
 

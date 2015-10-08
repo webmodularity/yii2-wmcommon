@@ -6,7 +6,7 @@ use yii\helpers\Html;
 use yii\widgets\InputWidget;
 use yii\helpers\Json;
 
-class TagsInput extends InputWidget
+class SimpleMDE extends InputWidget
 {
     public $options = ['class' => 'form-control'];
     public $clientOptions = [];
@@ -20,9 +20,8 @@ class TagsInput extends InputWidget
                 $this->options['id'] = $this->getId();
             }
         }
-        TagsInputAsset::register($this->getView());
+        SimpleMDEAsset::register($this->getView());
         $this->registerScript();
-        $this->registerEvent();
     }
     public function run()
     {
@@ -38,15 +37,5 @@ class TagsInput extends InputWidget
         $clientOptions = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
         $js = "jQuery('#{$this->options["id"]}').tagsinput({$clientOptions});";
         $this->getView()->registerJs($js);
-    }
-    public function registerEvent()
-    {
-        if (!empty($this->clientEvents)) {
-            $js = [];
-            foreach ($this->clientEvents as $event => $handle) {
-                $js[] = "jQuery('#{$this->options["id"]}').on('$event',$handle);";
-            }
-            $this->getView()->registerJs(implode(PHP_EOL, $js));
-        }
     }
 }
