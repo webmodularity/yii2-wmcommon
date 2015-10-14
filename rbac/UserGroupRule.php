@@ -23,6 +23,8 @@ class UserGroupRule extends \yii\rbac\Rule
                 return $groupId >= UserGroup::AUTHOR;
             } else if ($item->name === 'user') {
                 return $groupId >= UserGroup::USER;
+            } else if ($item->name === 'guest') {
+                return $groupId >= UserGroup::GUEST;
             }
         }
     return false;

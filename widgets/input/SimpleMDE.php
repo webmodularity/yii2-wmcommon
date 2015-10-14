@@ -3,14 +3,17 @@
 namespace wmc\widgets\input;
 
 use yii\helpers\Html;
+use yii\helpers\VarDumper;
 use yii\widgets\InputWidget;
 use yii\helpers\Json;
+use yii\web\JsExpression;
 
 class SimpleMDE extends InputWidget
 {
-    public $options = ['class' => 'form-control'];
+    public $options = [];
     public $clientOptions = [];
-    public $clientEvents = [];
+    public $uniqueId;
+
     public function init()
     {
         if (!isset($this->options['id'])) {
@@ -20,22 +23,37 @@ class SimpleMDE extends InputWidget
                 $this->options['id'] = $this->getId();
             }
         }
+        if (!$this->uniqueId) {
+            if ($this->hasModel() && $this->model->page_id > 0) {
+                $this->uniqueId = $this->model->page_id;
+            } else {
+                $this->uniqueId = "new";
+            }
+        }
+        $this->clientOptions['element'] = new JsExpression('$("#'.$this->options['id'].'")[0]');
+        if (!isset($this->clientOptions['autosave'])) {
+            $this->clientOptions['autosave'] = [
+                'enabled' => true,
+                'delay' => 10000,
+                'unique_id' => 'SMDE_' . $this->options['id'] . '_' . $this->uniqueId
+            ];
+        }
+        $initValue = $this->hasModel() ? $this->model->{$this->attribute} : $this->value;
+        $this->clientOptions['initialValue'] = $initValue;
         SimpleMDEAsset::register($this->getView());
         $this->registerScript();
     }
     public function run()
     {
         if ($this->hasModel()) {
-            echo Html::activeInput('text', $this->model, $this->attribute, $this->options);
+            echo Html::activeTextarea($this->model, $this->attribute, $this->options);
         } else {
-            echo Html::input('text', $this->name, $this->value, $this->options);
+            echo Html::textarea($this->name, $this->value, $this->options);
         }
     }
     public function registerScript()
     {
-        $this->getView()->registerCss(".bootstrap-tagsinput { width: 100%; }");
-        $clientOptions = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
-        $js = "jQuery('#{$this->options["id"]}').tagsinput({$clientOptions});";
+        $js = 'new SimpleMDE('.Json::encode($this->clientOptions).');';
         $this->getView()->registerJs($js);
     }
 }

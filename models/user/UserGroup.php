@@ -66,6 +66,7 @@ class UserGroup extends \wmc\db\ActiveRecord
         return $this->hasMany(User::className(), ['group_id' => 'id']);
     }
 
+    /*
     public static function getUserGroupList($currentUserGroupId = false, $includeGuest = false)
     {
         if ($includeGuest) {
@@ -74,4 +75,10 @@ class UserGroup extends \wmc\db\ActiveRecord
             return ArrayHelper::map(static::find()->guest(false)->userGroupFilter($currentUserGroupId)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
         }
     }
+    */
+
+    public static function getUserGroupList($userGroupId = null, $excludeGroupIds = []) {
+        return ArrayHelper::map(static::find()->userGroupFilter($userGroupId)->excludeUserGroups($excludeGroupIds)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
+    }
+
 }

@@ -5,6 +5,7 @@ namespace wmc\models;
 use Yii;
 use wmc\models\user\UserGroup;
 use creocoder\nestedsets\NestedSetsBehavior;
+use wmc\behaviors\UserGroupAccessBehavior;
 
 /**
  * This is the model class for table "{{%menu}}".
@@ -36,6 +37,11 @@ class Menu extends \wmc\db\ActiveRecord
                 'class' => NestedSetsBehavior::className(),
                 'treeAttribute' => 'tree_id'
             ],
+            [
+                'class' => UserGroupAccessBehavior::className(),
+                'viaTableName' => '{{%menu_access}}',
+                'itemIdField' => 'menu_id'
+            ]
         ];
     }
 
@@ -87,14 +93,6 @@ class Menu extends \wmc\db\ActiveRecord
             'link' => 'Link',
             'icon' => 'Icon',
         ];
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getUserGroups()
-    {
-        return $this->hasMany(UserGroup::className(), ['id' => 'user_group_id'])->viaTable('{{%menu_access}}', ['menu_id' => 'id']);
     }
 
     public function getMenuItemList() {
