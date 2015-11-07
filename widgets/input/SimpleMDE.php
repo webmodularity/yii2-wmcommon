@@ -3,7 +3,6 @@
 namespace wmc\widgets\input;
 
 use yii\helpers\Html;
-use yii\helpers\VarDumper;
 use yii\widgets\InputWidget;
 use yii\helpers\Json;
 use yii\web\JsExpression;
@@ -16,6 +15,7 @@ class SimpleMDE extends InputWidget
 
     public function init()
     {
+        parent::init();
         if (!isset($this->options['id'])) {
             if ($this->hasModel()) {
                 $this->options['id'] = Html::getInputId($this->model, $this->attribute);

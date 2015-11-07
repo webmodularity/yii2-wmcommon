@@ -4,7 +4,7 @@ namespace wmc\models;
 
 use Yii;
 use wmc\models\user\UserGroup;
-use creocoder\nestedsets\NestedSetsBehavior;
+use wmc\behaviors\NestedSetsBehavior;
 use wmc\behaviors\UserGroupAccessBehavior;
 
 /**
@@ -71,9 +71,34 @@ class Menu extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-           // [['tree_id'], 'required'],
             [['tree_id', 'type', 'lft', 'rgt', 'depth'], 'integer'],
-            [['name', 'link', 'icon'], 'string', 'max' => 255]
+            [['type'], 'in', 'range' => [static::TYPE_ROOT, static::TYPE_LINK, static::TYPE_DIVIDER, static::TYPE_HEADER]],
+            [['name', 'link', 'icon'], 'string', 'max' => 255],
+            [['name', 'link', 'icon'], 'trim'],
+            [['name', 'link', 'icon'], 'default', 'value' => null],
+            [['type'], 'required'],
+            [['name', 'link'], 'required', 'when' => function($model) {
+                return $model->type == static::TYPE_LINK;
+            }, 'whenClient' => "function (attribute, value) {
+                    return $('input[name=\"Menu[type]\"]:checked').val() == '".static::TYPE_LINK."';
+                    }"
+            ],
+            [['name'], 'required', 'when' => function($model) {
+                return in_array($model->type, [static::TYPE_ROOT, static::TYPE_HEADER]);
+            }, 'whenClient' => "function (attribute, value) {
+                    var typeVal = $('#menu-type').attr('type') == 'hidden' ? $('#menu-type').val() : $('input[name=\"Menu[type]\"]:checked').val();
+                    var validTypes = ['".static::TYPE_ROOT."', '".static::TYPE_HEADER."'];
+                    return $.inArray(typeVal, validTypes) == -1 ? false : true;
+                    }"
+            ],
+            [['name'], 'unique',
+                'targetClass' => '\wmc\models\Menu',
+                'targetAttribute' => 'name',
+                'filter' => ['type' => static::TYPE_ROOT],
+                'when' => function($model) {
+                    return $model->type == static::TYPE_ROOT;
+                }
+            ]
         ];
     }
 
@@ -86,12 +111,12 @@ class Menu extends \wmc\db\ActiveRecord
             'id' => 'ID',
             'tree_id' => 'Tree',
             'type' => 'Type',
-            'lft' => 'Lft',
-            'rgt' => 'Rgt',
+            'lft' => 'Left',
+            'rgt' => 'Right',
             'depth' => 'Depth',
             'name' => 'Name',
             'link' => 'Link',
-            'icon' => 'Icon',
+            'icon' => 'Icon Name',
         ];
     }
 

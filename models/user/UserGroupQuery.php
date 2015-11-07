@@ -9,25 +9,20 @@ namespace wmc\models\user;
  */
 class UserGroupQuery extends \yii\db\ActiveQuery
 {
-    /*
-    public function guest($state = false) {
-        $operand = $state === true ? '==' : '!=';
-        $this->andWhere([$operand, 'id', UserGroup::GUEST]);
-        return $this;
-    }
-    */
-
-    public function userGroupFilter($userGroupId) {
-        if (is_int($userGroupId) && $userGroupId >= 0) {
-            $this->andWhere(['<=', 'id', $userGroupId]);
-        }
+    public function groupsAccessible($groupId) {
+        $this->andWhere(['<=', 'id', $groupId]);
         return $this;
     }
 
-    public function excludeUserGroups($userGroupIds = [])
+    public function groupsNonAccessible($groupId) {
+        $this->andWhere(['>', 'id', $groupId]);
+        return $this;
+    }
+
+    public function groupsExclude($groupIds = [])
     {
-        if (!empty($userGroupIds)) {
-            $this->andWhere(['not in', 'id', $userGroupIds]);
+        if (!empty($groupIds)) {
+            $this->andWhere(['not in', 'id', $groupIds]);
         }
         return $this;
     }

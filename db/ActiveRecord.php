@@ -2,8 +2,6 @@
 
 namespace wmc\db;
 
-use yii\helpers\Inflector;
-
 class ActiveRecord extends \yii\db\ActiveRecord
 {
     /**
@@ -28,28 +26,6 @@ class ActiveRecord extends \yii\db\ActiveRecord
     public static function getMysqlDate($date = null) {
         $date = empty($date) ? time() : $date;
         return $date instanceof \DateTime ? $date->format('Y-m-d') : date('Y-m-d', $date);
-    }
-
-    public static function getReadableConstantList($prefix = '', $key = null) {
-        $reflection = new \ReflectionClass(static::className());
-        $constants = $reflection->getConstants();
-        $constantList = [];
-        foreach ($constants as $cName => $cVal) {
-            if (!empty($prefix)) {
-                if (substr($cName, 0, strlen($prefix)) != $prefix) {
-                    continue;
-                }
-                $humanized = Inflector::humanize(substr($cName, (strlen($prefix) - 1)));
-                if (!empty($key)) {
-                    if ($key == $cVal) {
-                        return $humanized;
-                    }
-                } else {
-                    $constantList[$cVal] = $humanized;
-                }
-            }
-        }
-        return !empty($key) ? null : $constantList;
     }
 
     /**

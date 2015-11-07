@@ -66,19 +66,46 @@ class UserGroup extends \wmc\db\ActiveRecord
         return $this->hasMany(User::className(), ['group_id' => 'id']);
     }
 
-    /*
-    public static function getUserGroupList($currentUserGroupId = false, $includeGuest = false)
-    {
-        if ($includeGuest) {
-            return ArrayHelper::map(static::find()->userGroupFilter($currentUserGroupId)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
-        } else {
-            return ArrayHelper::map(static::find()->guest(false)->userGroupFilter($currentUserGroupId)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
-        }
-    }
-    */
+    /**
+     * All groups that are accessible by specified userGroupId (inclusive)
+     * @param int $userGroupId ID of current user group
+     * @param array $excludeGroupIds group id's to ignore
+     * @return array id->name of groups
+     */
 
-    public static function getUserGroupList($userGroupId = null, $excludeGroupIds = []) {
-        return ArrayHelper::map(static::find()->userGroupFilter($userGroupId)->excludeUserGroups($excludeGroupIds)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
+    public static function getAccessibleGroupList($userGroupId = null, $excludeGroupIds = []) {
+        if (is_null($userGroupId)) {
+            $userGroupId = static::getCurrentUserGroupId();
+        }
+        return ArrayHelper::map(static::find()->groupsAccessible($userGroupId)->groupsExclude($excludeGroupIds)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
+    }
+
+    /**
+     * All groups that are NOT accessible by specified userGroupId
+     * @param int $userGroupId ID of current user group
+     * @param array $excludeGroupIds group id's to ignore
+     * @return array id->name of groups
+     */
+
+    public static function getNonAccessibleGroupList($userGroupId = null, $excludeGroupIds = []) {
+        if (is_null($userGroupId)) {
+            $userGroupId = static::getCurrentUserGroupId();
+        }
+        return ArrayHelper::map(static::find()->groupsNonAccessible($userGroupId)->groupsExclude($excludeGroupIds)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
+    }
+
+    /**
+     * All groups
+     * @param array $excludeGroupIds group id's to ignore
+     * @return array id->name of all groups
+     */
+
+    public static function getGroupList($excludeGroupIds = []) {
+        return ArrayHelper::map(static::find()->groupsExclude($excludeGroupIds)->orderBy(['id' => SORT_ASC])->all(), 'id', 'name');
+    }
+
+    public static function getCurrentUserGroupId() {
+        return Yii::$app->user->identity->group_id;
     }
 
 }

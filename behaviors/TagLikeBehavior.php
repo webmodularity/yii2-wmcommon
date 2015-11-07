@@ -42,7 +42,7 @@ class TagLikeBehavior extends Behavior
         }
     }
 
-    public function afterSave() {
+    public function afterSave($event) {
         foreach ($this->_tags as $tagName => $tagConfig) {
             $list = $tagConfig['list'];
             $tags = static::splitTags($this->owner->$list, $tagConfig['separator'], $tagConfig['trimValues']);
