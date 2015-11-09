@@ -1,6 +1,6 @@
 <?php
 
-namespace wmc\widgets\input;
+namespace wmc\widgets\bootstrap\input;
 
 use yii\helpers\Html;
 use yii\widgets\InputWidget;

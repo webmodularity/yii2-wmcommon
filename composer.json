@@ -21,6 +21,7 @@
     "kartik-v/yii2-widget-select2": "*",
     "kartik-v/yii2-widget-datetimepicker": "*",
     "bower-asset/bootstrap-tagsinput": "*",
+    "bower-asset/bootstrap-iconpicker": "*",
     "npm-asset/simplemde": "*"
   },
   "config": {
