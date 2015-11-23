@@ -13,6 +13,7 @@ class TagsInput extends InputWidget
     public $clientEvents = [];
     public function init()
     {
+        parent::init();
         if (!isset($this->options['id'])) {
             if ($this->hasModel()) {
                 $this->options['id'] = Html::getInputId($this->model, $this->attribute);

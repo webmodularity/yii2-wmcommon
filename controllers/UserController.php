@@ -39,12 +39,12 @@ class UserController extends \yii\web\Controller
                 'rules' => [
                     [
                         'allow' => false,
-                        'actions' => ['logout', 'forgot-password', 'reset-password', 'profile', 'change-password', 'change-email', 'reset-email'],
+                        'actions' => ['logout', 'profile', 'change-password', 'change-email', 'reset-email'],
                         'roles' => ['?'],
                     ],
                     [
                         'allow' => true,
-                        'actions' => ['logout', 'forgot-password', 'reset-password', 'profile', 'change-password', 'change-email', 'reset-email'],
+                        'actions' => ['logout', 'profile', 'change-password', 'change-email', 'reset-email', 'error'],
                         'roles' => ['@'],
                     ],
                     [
