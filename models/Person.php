@@ -165,6 +165,7 @@ class Person extends \wmc\db\ActiveRecord
         return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
+
     public function afterSave($insert, $changedAttributes) {
         if (!$insert && !empty($changedAttributes)) {
             // Try and find a user attached to this person
