@@ -51,9 +51,9 @@ class UserSearch extends User
 
         $userGroupWhere = ['<=', 'user_group.id', Yii::$app->user->identity->group_id];
         if ($this->status == User::STATUS_DELETED) {
-            $query = User::find()->where($userGroupWhere)->deleted();
+            $query = User::find()->joinWith(['person', 'group'])->where($userGroupWhere)->deleted();
         } else {
-            $query = User::find()->where($userGroupWhere)->notDeleted();
+            $query = User::find()->joinWith(['person', 'group'])->where($userGroupWhere)->notDeleted();
         }
 
         $dataProvider = new ActiveDataProvider([

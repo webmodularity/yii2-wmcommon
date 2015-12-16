@@ -165,6 +165,13 @@ class Person extends \wmc\db\ActiveRecord
         return $this->hasMany(Phone::className(), ['id' => 'phone_id'])->viaTable('{{%person_phone}}', ['person_id' => 'id']);
     }
 
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getUser()
+    {
+        return $this->hasOne(User::className(), ['person_id' => 'id']);
+    }
 
     public function afterSave($insert, $changedAttributes) {
         if (!$insert && !empty($changedAttributes)) {
