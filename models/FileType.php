@@ -3,6 +3,7 @@
 namespace wmc\models;
 
 use Yii;
+use yii\helpers\ArrayHelper;
 use yii\helpers\FileHelper;
 
 /**
@@ -16,6 +17,10 @@ use yii\helpers\FileHelper;
  */
 class FileType extends \wmc\db\ActiveRecord
 {
+    protected $_iconNames = [
+        1 => 'file-pdf-o'
+    ];
+
     /**
      * @inheritdoc
      */
@@ -54,7 +59,7 @@ class FileType extends \wmc\db\ActiveRecord
     }
 
     /**
-     * Should be called BEFOREE move_uploaded_file call!
+     * Should be called BEFORE move_uploaded_file call!
      * @param $uploadedFile UploadedFile
      * @return FileType Tries to find FileType based first on extension but falls back to first available mimi-type match (sorted by id ASC)
      */
@@ -73,5 +78,20 @@ class FileType extends \wmc\db\ActiveRecord
             }
         }
         return $fileType;
+    }
+
+    public function getIconName() {
+        return isset($this->_iconNames[$this->id]) ? $this->_iconNames[$this->id] : 'file-o';
+    }
+
+    public static function getFileTypeList($excludeIds = [], $includeIds = []) {
+        if (!empty($excludeIds) && is_array($excludeIds)) {
+            $where = ['not in', 'id', $excludeIds];
+        } else if(!empty($includeIds) && is_array($includeIds)) {
+            $where = ['in', 'id', $includeIds];
+        } else {
+            $where = '1=1';
+        }
+        return ArrayHelper::map(FileType::find()->where($where)->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
     }
 }
