@@ -27,6 +27,16 @@ class UserGroupQuery extends \yii\db\ActiveQuery
         return $this;
     }
 
+    public function groupsGreater($groupId) {
+        $this->andWhere(['>=', 'id', $groupId]);
+        return $this;
+    }
+
+    public function groupsLesser($groupId) {
+        $this->andWhere(['<=', 'id', $groupId]);
+        return $this;
+    }
+
     /**
      * @inheritdoc
      * @return UserGroup[]|array

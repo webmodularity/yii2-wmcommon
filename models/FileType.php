@@ -5,6 +5,7 @@ namespace wmc\models;
 use Yii;
 use yii\helpers\ArrayHelper;
 use yii\helpers\FileHelper;
+use wmc\models\FileTypeQuery;
 
 /**
  * This is the model class for table "common.file_type".
@@ -20,6 +21,11 @@ class FileType extends \wmc\db\ActiveRecord
     protected $_iconNames = [
         1 => 'file-pdf-o'
     ];
+
+    public static function find()
+    {
+        return new FileTypeQuery(get_called_class());
+    }
 
     /**
      * @inheritdoc
@@ -60,24 +66,18 @@ class FileType extends \wmc\db\ActiveRecord
 
     /**
      * Should be called BEFORE move_uploaded_file call!
-     * @param $uploadedFile UploadedFile
+     * @param $uploadedFile \yii\web\UploadedFile
      * @return FileType Tries to find FileType based first on extension but falls back to first available mimi-type match (sorted by id ASC)
      */
 
     public static function findByUploadedFile($uploadedFile) {
-        $fileType = null;
-        // Check by extension first
-        if (!empty($uploadedFile->extension)) {
-            $fileType = static::find()->where(['extension' => strtolower($uploadedFile->extension)])->one();
+        // Try and find by MIME (using FileHelper to get actual MIME type)
+        $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
+        if (!empty($mimeType)) {
+            return static::find()->where(['mime_type' => $mimeType])->orderBy(['id' => SORT_ASC])->limit(1)->one();
+        } else {
+            return null;
         }
-        if (empty($fileType)) {
-            // Try and find by MIME (using FileHelper to get actual MIME type)
-            $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
-            if (!empty($mimeType)) {
-                $fileType = static::find()->where(['mime_type' => $mimeType])->orderBy(['id' => SORT_ASC])->limit(1)->one();
-            }
-        }
-        return $fileType;
     }
 
     public function getIconName() {
@@ -85,13 +85,6 @@ class FileType extends \wmc\db\ActiveRecord
     }
 
     public static function getFileTypeList($excludeIds = [], $includeIds = []) {
-        if (!empty($excludeIds) && is_array($excludeIds)) {
-            $where = ['not in', 'id', $excludeIds];
-        } else if(!empty($includeIds) && is_array($includeIds)) {
-            $where = ['in', 'id', $includeIds];
-        } else {
-            $where = '1=1';
-        }
-        return ArrayHelper::map(FileType::find()->where($where)->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
+        return ArrayHelper::map(FileType::find()->includeTypes($includeIds)->excludeTypes($excludeIds)->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
     }
 }
