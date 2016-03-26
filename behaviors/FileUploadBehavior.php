@@ -11,32 +11,28 @@ use yii\base\DynamicModel;
 use yii\helpers\ArrayHelper;
 use yii\web\UploadedFile;
 use wmc\models\FilePath;
+use yii\validators\Validator;
 use yii\helpers\VarDumper;
 
 class FileUploadBehavior extends Behavior
 {
-    const DEFAULT_PATH = "@frontend/uploads";
-
     public $upload_file;
 
-    protected $_path;
-    protected $_pathAttribute;
-    protected $_fileTypes;
+    protected $_path = "@frontend/uploads";
+    protected $_fileTypes = [];
     protected $_fileTypesExclude;
     protected $_minSize;
     protected $_maxSize = 4294967295;
-    protected $_required = true;
+    protected $_uploadRequired = true;
+
+    protected $_uploadedFileType;
+    protected $_uploadedFileNormalizedName;
+    protected $_uploadedFilePath;
 
     protected $_saveFileModel = true;
-    protected $_aliasAttribute;
     protected $_inline;
     protected $_status;
     protected $_userGroups = [];
-
-    protected $_uploadedFile;
-    protected $_filePath;
-    protected $_fileType;
-    protected $_actualName;
 
     public function events()
     {
@@ -48,70 +44,77 @@ class FileUploadBehavior extends Behavior
         ];
     }
 
+    public function attach($owner) {
+        parent::attach($owner);
+
+        $skipOnEmpty = $this->getUploadRequired() ? false : true;
+        $owner->validators->append(Validator::createValidator('file', $owner, ['upload_file'], [
+            'skipOnEmpty' => $skipOnEmpty,
+            'mimeTypes' => $this->getMimeTypes(),
+            'minSize' => $this->getMinSize(),
+            'maxSize' => $this->getMaxSize()
+        ]));
+    }
+
     public function beforeValidate($event) {
-        $this->_uploadedFile = UploadedFile::getInstance($this->owner, 'upload_file');
-        if (is_null($this->_uploadedFile)) {
-            if ($this->required) {
-                $this->owner->addError('upload_file', "File required.");
-                $event->isValid = false;
-                return false;
-            }
-        } else {
+        $this->owner->upload_file = UploadedFile::getInstance($this->owner, 'upload_file');
+        $uploadedFile = $this->owner->upload_file;
+
+        if (!is_null($uploadedFile)) {
             // FileType
-            $this->_fileType = FileType::findByUploadedFile($this->_uploadedFile);
-            if (is_null($this->_fileType)) {
+            $this->_uploadedFileType = FileType::findByUploadedFile($uploadedFile);
+            if (is_null($this->_uploadedFileType)) {
+                Yii::error("Failed to determine type of uploaded file. UploadedFile: (" . VarDumper::dumpAsString($uploadedFile) . ").", 'FileUploadBehavior');
                 $this->owner->addError('upload_file', "Unrecognized file type.");
                 $event->isValid = false;
                 return false;
             }
-            // Validate $upload_file
-            $model = new DynamicModel(['upload_file' => $this->_uploadedFile]);
-            $model->addRule(['upload_file'], 'file', ['mimeTypes' => ArrayHelper::getColumn($this->getFileTypes(), 'mime_type'), 'minSize' => $this->getMinSize(), 'maxSize' => $this->getMaxSize()])->validate();
-            if ($model->hasErrors()) {
-                $this->owner->addError('upload_file', $model->getFirstError('upload_file'));
+            // FilePath
+            if ($this->_saveFileModel) {
+                if (@is_dir(Yii::getAlias($this->_path)) && is_writable(Yii::getAlias($this->_path))) {
+                    $this->_uploadedFilePath = FilePath::findByPath($this->_path);
+                }
+            } else {
+                $this->_uploadedFilePath = FilePath::findOne($this->owner->file_path_id);
+            }
+            if (is_null($this->_uploadedFilePath)) {
+                Yii::error("Failed to upload file to specified path. (_path: " . $this->_path . ").", 'FileUploadBehavior');
+                $this->owner->addError('upload_file', "Failed to upload file to specified path. Please check permissions.");
                 $event->isValid = false;
                 return false;
+            }
+            // Normalized FileName
+            $this->_uploadedFileNormalizedName = File::normalizeFileName(
+                $this->owner->upload_file->baseName,
+                $this->_uploadedFileType->extension,
+                $this->_uploadedFilePath->path
+            );
+            if (!$this->_saveFileModel) {
+                $this->owner->file_type_id = $this->_uploadedFileType->id;
+                $this->owner->name = $this->_uploadedFileNormalizedName;
             }
         }
     }
 
     public function beforeSave($event) {
-        if (!is_null($this->_uploadedFile)) {
-            // FilePath
-            if (!empty($this->_pathAttribute)) {
-                $pathValue = $this->owner->{$this->_pathAttribute};
-                if (is_numeric($pathValue)) {
-                    $this->_filePath = FilePath::findOne($pathValue);
-                } else {
-                    $this->_filePath = $this->getFilePathModel($pathValue);
-                }
-            } else {
-                $this->_filePath = !empty($this->_path) ? $this->getFilePathModel($this->_path) : $this->getFilePathModel(static::DEFAULT_PATH);
-            }
-            if (is_null($this->_filePath)) {
-                Yii::error("Failed to upload file to specified path. (_path: " . $this->_path . ", _pathAttribute: " . $this->_pathAttribute . ").", 'FileUploadBehavior');
-                $this->owner->addError('upload_file', "Failed to upload file to specified path. Please check permissions.");
-                $event->isValid = false;
-                return false;
-            }
+        $uploadedFile = $this->owner->upload_file;
+        if (!is_null($uploadedFile)) {
             // Save uploaded file to destination path
-            $upload = $this->_uploadedFile->saveAs(Yii::getAlias($this->_filePath->path) . DIRECTORY_SEPARATOR . $this->getActualName() . '.' . $this->_fileType->extension);
+            $upload = $uploadedFile->saveAs(Yii::getAlias($this->_uploadedFilePath->path) . DIRECTORY_SEPARATOR . $this->_uploadedFileNormalizedName . '.' . $this->_uploadedFileType->extension);
             if (!$upload) {
                 Yii::error("Failed to save uploaded file to destination!
-            [Full Path: " . Yii::getAlias($this->_filePath->path) . DIRECTORY_SEPARATOR . $this->getActualName() . '.' . $this->_fileType->extension . "]
-            [Uploaded File: Name: " . $this->_uploadedFile->name . " Size: " . $this->_uploadedFile->size . " bytes]", 'FileUploadBehavior');
+            [Full Path: " . Yii::getAlias($this->_uploadedFilePath->path) . DIRECTORY_SEPARATOR . $this->_uploadedFileNormalizedName . '.' . $this->_uploadedFileType->extension . "]
+            [Uploaded File: Name: " . $uploadedFile->name . " Size: " . $uploadedFile->size . " bytes]", 'FileUploadBehavior');
                 $this->owner->addError('upload_file', "Failed to save uploaded file to destination!");
                 $event->isValid = false;
                 return false;
             }
             // File Model
-            if ($this->_saveFileModel === true) {
-                $fileAlias = !empty($this->_aliasAttribute) ? $this->owner->{$this->_aliasAttribute} : $this->getActualName();
+            if ($this->_saveFileModel) {
                 $fileValues = [
-                    'file_type_id' => $this->_fileType->id,
-                    'file_path_id' => $this->_filePath->id,
-                    'name' => $this->getActualName(),
-                    'alias' => $fileAlias
+                    'file_type_id' => $this->_uploadedFileType->id,
+                    'file_path_id' => $this->_uploadedFilePath->id,
+                    'name' => $this->_uploadedFileNormalizedName
                 ];
                 if (!is_null($this->_status)) {
                     $fileValues['status'] = $this->_status;
@@ -157,26 +160,6 @@ class FileUploadBehavior extends Behavior
         }
     }
 
-    public function getPath() {
-        return $this->_path;
-    }
-
-    /**
-     * Setting this to the attribute name of the behaviors owner will use that value for the destination path.
-     * Required if $this->path is not set.
-     * @param $pathAttribute string The attribute name that holds the path value
-     */
-
-    public function setPathAttribute($pathAttribute) {
-        if (is_string($pathAttribute) && !empty($pathAttribute)) {
-            $this->_pathAttribute = $pathAttribute;
-        }
-    }
-
-    public function getPathAttribute() {
-        return $this->_pathAttribute;
-    }
-
     /**
      * Refer to wmc/models/FileType for a list of supported file types
      * @param $fileTypeIds array List of FileType ID's to allow.
@@ -184,7 +167,7 @@ class FileUploadBehavior extends Behavior
 
     public function setFileTypes($fileTypeIds) {
         if (!empty($fileTypeIds)) {
-            $this->_fileTypes = FileType::find()->includeTypes($fileTypeIds)->all();
+            $this->_fileTypes = FileType::find()->joinWith('mimeTypes')->includeTypes($fileTypeIds)->all();
         }
     }
 
@@ -195,7 +178,7 @@ class FileUploadBehavior extends Behavior
 
     public function setFileTypesExclude($fileTypeIds) {
         if (!empty($fileTypeIds) && empty($this->fileTypes)) {
-            $this->_fileTypes = FileType::find()->excludeTypes($fileTypeIds)->all();
+            $this->_fileTypes = FileType::find()->joinWith('mimeTypes')->excludeTypes($fileTypeIds)->all();
         }
     }
 
@@ -238,14 +221,14 @@ class FileUploadBehavior extends Behavior
      * @param $required bool Defaults to true
      */
 
-    public function setRequired($required) {
+    public function setUploadRequired($required) {
         if (is_bool($required)) {
-            $this->_required = $required;
+            $this->_uploadRequired = $required;
         }
     }
 
-    public function getRequired() {
-        return $this->_required;
+    public function getUploadRequired() {
+        return $this->_uploadRequired;
     }
 
     /**
@@ -261,27 +244,6 @@ class FileUploadBehavior extends Behavior
 
     public function getSaveFileModel() {
         return $this->_saveFileModel;
-    }
-
-    public function getFileIdField() {
-        return $this->_fileIdField;
-    }
-
-    /**
-     * This will specify the alias attribute of $this->owner for the file. If this is not set (default) the alias will
-     * be derived from uploaded file name.
-     * @param $aliasAttribute string Alias attribute of $this->owner for file to be referenced by.
-     * See wmc\models\File->alias for more details
-     */
-
-    public function setAliasAttribute($aliasAttribute) {
-        if (is_string($aliasAttribute) && !empty($aliasAttribute)) {
-            $this->_aliasAttribute = $aliasAttribute;
-        }
-    }
-
-    public function getAliasAttribute() {
-        return $this->_aliasAttribute;
     }
 
     /**
@@ -329,32 +291,14 @@ class FileUploadBehavior extends Behavior
         return $this->_userGroups;
     }
 
-    protected function normalizeUploadedFileName() {
-        $normalizedName = static::sanitizeUploadedFileName($this->_uploadedFile->baseName);
-        $count = 0;
-        while (file_exists(Yii::getAlias($this->getPath() . DIRECTORY_SEPARATOR . $normalizedName . '.' . $this->_fileType->extension))) {
-            $count++;
-            $normalizedName = static::sanitizeUploadedFileName($this->_uploadedFile->baseName) . '_' . $count;
+    protected function getMimeTypes() {
+        $mimeTypes = [];
+        foreach ($this->getFileTypes() as $fileType) {
+            foreach ($fileType->mimeTypes as $mimeType) {
+                $mimeTypes[] = $mimeType->mime_type;
+            }
         }
-        return $normalizedName;
-    }
-
-    public static function sanitizeUploadedFileName($name) {
-        return preg_replace("/[^A-Za-z0-9\-_]/", '', str_replace(['.', ':', ';', "'", '~'], '-', str_replace(' ', '_', $name)));
-    }
-
-    protected function getActualName() {
-        if (empty($this->_actualName)) {
-            $this->_actualName = $this->normalizeUploadedFileName();
-        }
-        return $this->_actualName;
-    }
-
-    protected function getFilePathModel($path) {
-        if (@is_dir(Yii::getAlias($path)) && is_writable(Yii::getAlias($path))) {
-            return FilePath::findByPath($path);
-        }
-        return false;
+        return $mimeTypes;
     }
 
 }

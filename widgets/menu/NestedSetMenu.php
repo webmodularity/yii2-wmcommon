@@ -38,7 +38,6 @@ class NestedSetMenu extends \yii\base\Widget
         }
 
         if (is_null($this->_rootNode)) {
-            //die(var_dump($this));
             throw new InvalidConfigException("Unable to locate root node of menu!");
         }
 

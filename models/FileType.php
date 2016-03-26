@@ -6,6 +6,7 @@ use Yii;
 use yii\helpers\ArrayHelper;
 use yii\helpers\FileHelper;
 use wmc\models\FileTypeQuery;
+use wmc\models\FileTypeMime;
 
 /**
  * This is the model class for table "common.file_type".
@@ -13,7 +14,6 @@ use wmc\models\FileTypeQuery;
  * @property integer $id
  * @property string $name
  * @property string $extension
- * @property string $mime_type
  * @property integer $allow_inline
  */
 class FileType extends \wmc\db\ActiveRecord
@@ -43,7 +43,7 @@ class FileType extends \wmc\db\ActiveRecord
         return [
             [['name', 'extension'], 'required'],
             [['allow_inline'], 'integer'],
-            [['name', 'mime_type'], 'string', 'max' => 50],
+            [['name'], 'string', 'max' => 50],
             [['extension'], 'string', 'max' => 5],
             [['name'], 'unique'],
             [['extension'], 'unique']
@@ -59,9 +59,16 @@ class FileType extends \wmc\db\ActiveRecord
             'id' => 'ID',
             'name' => 'Name',
             'extension' => 'Extension',
-            'mime_type' => 'Mime Type',
             'allow_inline' => 'Allow Inline',
         ];
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getMimeTypes()
+    {
+        return $this->hasMany(FileTypeMime::className(), ['file_type_id' => 'id']);
     }
 
     /**
@@ -74,7 +81,7 @@ class FileType extends \wmc\db\ActiveRecord
         // Try and find by MIME (using FileHelper to get actual MIME type)
         $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
         if (!empty($mimeType)) {
-            return static::find()->where(['mime_type' => $mimeType])->orderBy(['id' => SORT_ASC])->limit(1)->one();
+            return static::find()->joinWith(['mimeTypes'])->where(['mime_type' => $mimeType])->limit(1)->one();
         } else {
             return null;
         }

@@ -70,7 +70,7 @@ class FilePath extends \wmc\db\ActiveRecord
         }
         return $filePath;
     }
-    
+
     public static function getFilePathList() {
         return ArrayHelper::map(self::find()->orderBy(['path' => SORT_ASC])->all(), 'id', 'path');
     }
