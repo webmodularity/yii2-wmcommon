@@ -36,6 +36,15 @@ class UserQuery extends \yii\db\ActiveQuery
         return $this;
     }
 
+    public function superAdmin($bool = true) {
+        if ($bool === false){
+            $this->andWhere(['!=', 'group_id', UserGroup::SU]);
+        } else {
+            $this->andWhere(['group_id' => UserGroup::SU]);
+        }
+        return $this;
+    }
+
     /**
      * @inheritdoc
      * @return User[]|array

@@ -30,8 +30,15 @@ class FilePath extends \wmc\db\ActiveRecord
     {
         return [
             [['path'], 'required'],
-            [['path'], 'string', 'max' => 255],
-            [['path'], 'unique']
+            [['path', 'alias'], 'string', 'max' => 255],
+            [['path', 'alias'], 'unique'],
+            [['path'], function ($attribute, $params) {
+                if (!is_dir(Yii::getAlias(dirname($this->$attribute))) || !is_writable(Yii::getAlias(dirname($this->$attribute)))) {
+                    $this->addError($attribute, "Path doesn't exist or is not writeable!");
+                    return false;
+                }
+            }]
+
         ];
     }
 
@@ -42,7 +49,7 @@ class FilePath extends \wmc\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'path' => 'Path',
+            'path' => 'Full Path',
         ];
     }
 
@@ -52,6 +59,23 @@ class FilePath extends \wmc\db\ActiveRecord
     public function getFiles()
     {
         return $this->hasMany(File::className(), ['file_path_id' => 'id']);
+    }
+
+    public function afterSave($insert, $changedAttributes) {
+        if ($insert) {
+            $oldMask = umask(0);
+            @mkdir(Yii::getAlias($this->path), 0777);
+            umask($oldMask);
+        } else if (in_array('path', array_keys($changedAttributes))) {
+            @rename(Yii::getAlias($changedAttributes['path']), Yii::getAlias($this->path));
+        }
+        parent::afterSave($insert, $changedAttributes);
+    }
+
+    public function afterDelete() {
+        @rmdir(Yii::getAlias($this->path));
+
+        parent::afterDelete();
     }
 
     public static function findByPath($path) {
