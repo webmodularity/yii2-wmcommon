@@ -23,7 +23,8 @@
     "bower-asset/bootstrap-tagsinput": "*",
     "bower-asset/bs-confirmation": "*",
     "bower-asset/jquery.redirect": "*",
-    "npm-asset/simplemde": "*"
+    "npm-asset/simplemde": "*",
+    "2amigos/yii2-switch-widget": "~1.0"
   },
   "config": {
     "process-timeout": 1800
