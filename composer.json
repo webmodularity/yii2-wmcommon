@@ -24,7 +24,8 @@
     "bower-asset/bs-confirmation": "*",
     "bower-asset/jquery.redirect": "*",
     "npm-asset/simplemde": "*",
-    "2amigos/yii2-switch-widget": "~1.0"
+    "2amigos/yii2-switch-widget": "~1.0",
+    "loveorigami/yii2-bootstrap-toggle": "*"
   },
   "config": {
     "process-timeout": 1800
