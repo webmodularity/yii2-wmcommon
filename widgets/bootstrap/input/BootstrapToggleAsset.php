@@ -2,7 +2,7 @@
 
 namespace wmc\widgets\bootstrap\input;
 
-class ToggleAsset extends \yii\web\AssetBundle
+class BootstrapToggleAsset extends \yii\web\AssetBundle
 {
     public $sourcePath = '@bower/bootstrap-toggle';
 

@@ -18,14 +18,15 @@
     "rmrevin/yii2-fontawesome": "*",
     "zelenin/yii2-recaptcha-widget": "*",
     "creocoder/yii2-nested-sets": "*",
+    "2amigos/yii2-switch-widget": "~1.0",
     "kartik-v/yii2-widget-select2": "*",
     "kartik-v/yii2-widget-datetimepicker": "*",
+    "kartik-v/yii2-widget-fileinput": "@dev",
     "bower-asset/bootstrap-tagsinput": "*",
     "bower-asset/bs-confirmation": "*",
     "bower-asset/jquery.redirect": "*",
     "bower-asset/bootstrap-toggle": "*",
-    "npm-asset/simplemde": "*",
-    "2amigos/yii2-switch-widget": "~1.0"
+    "npm-asset/simplemde": "*"
   },
   "config": {
     "process-timeout": 1800

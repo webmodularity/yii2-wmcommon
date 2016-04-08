@@ -7,8 +7,6 @@ use yii\base\Behavior;
 use wmc\models\File;
 use wmc\models\FileType;
 use yii\db\ActiveRecord;
-use yii\base\DynamicModel;
-use yii\helpers\ArrayHelper;
 use yii\web\UploadedFile;
 use wmc\models\FilePath;
 use yii\validators\Validator;
