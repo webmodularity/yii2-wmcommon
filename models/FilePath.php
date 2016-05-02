@@ -31,14 +31,7 @@ class FilePath extends \wmc\db\ActiveRecord
         return [
             [['path'], 'required'],
             [['path', 'alias'], 'string', 'max' => 255],
-            [['path', 'alias'], 'unique'],
-            [['path'], function ($attribute, $params) {
-                if (!is_dir(Yii::getAlias(dirname($this->$attribute))) || !is_writable(Yii::getAlias(dirname($this->$attribute)))) {
-                    $this->addError($attribute, "Path doesn't exist or is not writeable!");
-                    return false;
-                }
-            }]
-
+            [['path', 'alias'], 'unique']
         ];
     }
 
