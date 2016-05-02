@@ -75,8 +75,10 @@ class MenuSyncBehavior extends \yii\base\Behavior
     }
 
     public function afterDelete($event) {
-        // Delete menu item
-        $this->deleteMenuItem($this->menuModel);
+        if (!is_null($this->menuModel)) {
+            // Delete menu item
+            $this->deleteMenuItem($this->menuModel);
+        }
     }
 
     protected function getMenuModel() {
