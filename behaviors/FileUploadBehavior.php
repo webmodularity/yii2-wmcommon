@@ -3,131 +3,171 @@
 namespace wmc\behaviors;
 
 use Yii;
-use yii\base\Behavior;
-use wmc\models\File;
+use wmc\behaviors\AttributeBehavior;
+use wmc\models\FileData;
 use wmc\models\FileType;
+use yii\base\InvalidConfigException;
 use yii\db\ActiveRecord;
+use yii\helpers\Inflector;
 use yii\web\UploadedFile;
 use wmc\models\FilePath;
 use yii\validators\Validator;
 use yii\helpers\VarDumper;
+use yii\helpers\FileHelper;
 
-class FileUploadBehavior extends Behavior
+class FileUploadBehavior extends AttributeBehavior
 {
-    public $upload_file;
+    static $attributeConfigDefault = [
+        'path' => null,
+        'fileTypes' => [],
+        'minSize' => null,
+        'maxSize' => 4294967295,
+    ];
 
-    protected $_path = "@frontend/uploads";
-    protected $_fileTypes = [];
-    protected $_fileTypesExclude;
-    protected $_minSize;
-    protected $_maxSize = 4294967295;
-    protected $_uploadRequired = true;
+    public $fileUpload;
 
-    protected $_uploadedFileType;
-    protected $_uploadedFileNormalizedName;
-    protected $_uploadedFilePath;
-
-    protected $_saveFileModel = true;
-    protected $_inline;
-    protected $_status;
-    protected $_userGroups = [];
+    protected $_uploadedFiles = [];
 
     public function events()
     {
         return [
             ActiveRecord::EVENT_BEFORE_VALIDATE => 'beforeValidate',
-            ActiveRecord::EVENT_BEFORE_INSERT => 'beforeSave',
-            ActiveRecord::EVENT_BEFORE_UPDATE => 'beforeSave',
-            ActiveRecord::EVENT_AFTER_DELETE => 'afterDelete'
+            ActiveRecord::EVENT_BEFORE_INSERT => 'beforeInsert',
+            ActiveRecord::EVENT_BEFORE_UPDATE => 'beforeUpdate'
         ];
+    }
+
+    public function setAttributes($attributes) {
+        if (is_array($attributes)) {
+            foreach ($attributes as $attributeName => $attributeConfig) {
+                if (empty($attributeName) || is_int($attributeName)) {
+                    $attributeName = 'fileUpload';
+                }
+                $this->_attributes[$attributeName] = $this->processAttributeConfig($attributeName, $attributeConfig);
+            }
+        }
+    }
+
+    protected function processAttributeConfig($attributeName, $attributeConfig) {
+        $config = static::$attributeConfigDefault;
+        foreach ($config as $name => $defaultVal) {
+            $val = isset($attributeConfig[$name]) ? $attributeConfig[$name] : $defaultVal;
+            switch($name) {
+                case 'path':
+                    if (!empty($val) && is_string($val)) {
+                        $filePath = FilePath::find()->where(['path' => $val])->limit(1)->one();
+                        if (!is_null($filePath)) {
+                            $config[$name] = $filePath;
+                        }
+                    }
+                    break;
+                case 'fileTypes':
+                    if (!empty($val) && (is_string($val) || is_array($val))) {
+                        $normalizedVal = is_string($val) ? [$val] : $val;
+                        $fileTypeNames = [];
+                        foreach ($normalizedVal as $fileType) {
+                            if (is_string($fileType) && !in_array($fileType, $fileTypeNames)) {
+                                $fileTypeNames[] = $fileType;
+                            }
+                        }
+                        if (!empty($fileTypeNames)) {
+                            $config[$name] = FileType::find()->inName($fileTypeNames)->all();
+                        }
+                    }
+                    if (empty($config[$name])) {
+                        // Need to define at least 1 file type
+                        throw new InvalidConfigException("No valid FileType names specified!");
+                    }
+                    break;
+                case 'minSize':
+                case 'maxSize':
+                if (is_int($val) && $val > 0 && $val <= 4294967295) {
+                    $config[$name] = $val;
+                }
+                break;
+            }
+        }
+        return $config;
     }
 
     public function attach($owner) {
         parent::attach($owner);
 
-        $skipOnEmpty = $this->getUploadRequired() ? false : true;
-        $owner->validators->append(Validator::createValidator('file', $owner, ['upload_file'], [
-            'skipOnEmpty' => $skipOnEmpty,
-            'mimeTypes' => $this->getMimeTypes(),
-            'minSize' => $this->getMinSize(),
-            'maxSize' => $this->getMaxSize()
-        ]));
+        foreach ($this->_attributes as $attributeName => $settings) {
+            $owner->validators->append(Validator::createValidator('file', $owner, [$attributeName], [
+                'mimeTypes' => $this->getAllowedMimeTypes($attributeName),
+                'minSize' => $settings['minSize'],
+                'maxSize' => $settings['minSize']
+            ]));
+        }
     }
 
     public function beforeValidate($event) {
-        $this->owner->upload_file = UploadedFile::getInstance($this->owner, 'upload_file');
-        $uploadedFile = $this->owner->upload_file;
+        foreach ($this->_attributes as $attributeName => $attributeConfig) {
+            $this->owner->$attributeName = UploadedFile::getInstance($this->owner, $attributeName);
+            $uploadedFile = $this->owner->$attributeName;
 
-        if (!is_null($uploadedFile)) {
-            // FileType
-            $this->_uploadedFileType = FileType::findByUploadedFile($uploadedFile);
-            if (is_null($this->_uploadedFileType)) {
-                Yii::error("Failed to determine type of uploaded file. UploadedFile: (" . VarDumper::dumpAsString($uploadedFile) . ").", 'FileUploadBehavior');
-                $this->owner->addError('upload_file', "Unrecognized file type.");
-                $event->isValid = false;
-                return false;
-            }
-            // FilePath
-            if ($this->_saveFileModel) {
-                if (@is_dir(Yii::getAlias($this->_path)) && is_writable(Yii::getAlias($this->_path))) {
-                    $this->_uploadedFilePath = FilePath::findByPath($this->_path);
+            if (!is_null($uploadedFile)) {
+                // FileType
+                $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
+                if (empty($mimeType)) {
+                    Yii::error("Failed to determine type of uploaded file. UploadedFile: ("
+                        . VarDumper::dumpAsString($uploadedFile)
+                        . ")."
+                        , 'FileUploadBehavior');
+                    $this->owner->addError($attributeName, "Unrecognized file type.");
+                    $event->isValid = false;
+                    return false;
+                } else {
+                    $this->_uploadedFiles[$attributeName]['type'] = FileType::find()->fromMimeType($mimeType)->limit(1)->one();
                 }
+                // FilePath
+                if ($attributeConfig['path'] instanceof FilePath) {
+                    $this->_uploadedFiles[$attributeName]['path'] = $attributeConfig['path'];
+                } else {
+                    $this->_uploadedFiles[$attributeName]['path'] = FilePath::findOne($this->owner->file_path_id);
+                }
+                // Normalized FileName
+                $this->_uploadedFiles[$attributeName]['normalizedName'] = FileData::normalizeFileName(
+                    $this->owner->$attributeName->baseName,
+                    $this->_uploadedFiles[$attributeName]['type']->extension,
+                    $this->_uploadedFiles[$attributeName]['path']->path
+                );
             } else {
-                $this->_uploadedFilePath = FilePath::findOne($this->owner->file_path_id);
-            }
-            if (is_null($this->_uploadedFilePath)) {
-                Yii::error("Failed to upload file to specified path. (_path: " . $this->_path . ").", 'FileUploadBehavior');
-                $this->owner->addError('upload_file', "Failed to upload file to specified path. Please check permissions.");
-                $event->isValid = false;
-                return false;
-            }
-            // Normalized FileName
-            $this->_uploadedFileNormalizedName = File::normalizeFileName(
-                $this->owner->upload_file->baseName,
-                $this->_uploadedFileType->extension,
-                $this->_uploadedFilePath->path
-            );
-            if (!$this->_saveFileModel) {
-                $this->owner->file_type_id = $this->_uploadedFileType->id;
-                $this->owner->name = $this->_uploadedFileNormalizedName;
+                if ($this->owner->isAttributeChanged($attributeName) && empty($this->owner->$attributeName)) {
+                    $this->owner->$attributeName = $this->owner->getOldAttribute($attributeName);
+                }
             }
         }
     }
 
-    public function beforeSave($event) {
-        $uploadedFile = $this->owner->upload_file;
-        if (!is_null($uploadedFile)) {
-            // Save uploaded file to destination path
-            $upload = $uploadedFile->saveAs(Yii::getAlias($this->_uploadedFilePath->path) . DIRECTORY_SEPARATOR . $this->_uploadedFileNormalizedName . '.' . $this->_uploadedFileType->extension);
-            if (!$upload) {
-                Yii::error("Failed to save uploaded file to destination!
-            [Full Path: " . Yii::getAlias($this->_uploadedFilePath->path) . DIRECTORY_SEPARATOR . $this->_uploadedFileNormalizedName . '.' . $this->_uploadedFileType->extension . "]
-            [Uploaded File: Name: " . $uploadedFile->name . " Size: " . $uploadedFile->size . " bytes]", 'FileUploadBehavior');
-                $this->owner->addError('upload_file', "Failed to save uploaded file to destination!");
-                $event->isValid = false;
-                return false;
-            }
-            // File Model
-            if ($this->_saveFileModel) {
-                $fileValues = [
-                    'file_type_id' => $this->_uploadedFileType->id,
-                    'file_path_id' => $this->_uploadedFilePath->id,
-                    'name' => $this->_uploadedFileNormalizedName
-                ];
-                if (!is_null($this->_status)) {
-                    $fileValues['status'] = $this->_status;
-                }
-                if (!is_null($this->_inline)) {
-                    $fileValues['inline'] = $this->_inline;
-                }
-                $file = new File($fileValues);
-                $file->userGroupIds = $this->getUserGroups();
-                if ($file->save()) {
-                    // Link File Model
-                    $this->owner->file_id = $file->id;
-                } else {
-                    Yii::error("Failed to create new File Model from (" . VarDumper::dumpAsString($fileValues) . ") due to (".VarDumper::dumpAsString($file->getErrors()).")");
-                    $this->owner->addError('upload_file', "Failed to create new file in database!");
+    public function beforeInsert($event) {
+        foreach (array_keys($this->_attributes) as $attributeName) {
+            $uploadedFile = $this->owner->$attributeName;
+
+            if (!is_null($uploadedFile)) {
+                // Save uploaded file to destination path
+                $upload = $uploadedFile->saveAs(Yii::getAlias($this->_uploadedFiles[$attributeName]['path']->path)
+                    . DIRECTORY_SEPARATOR
+                    . $this->_uploadedFiles[$attributeName]['normalizedName']
+                    . '.'
+                    . $this->_uploadedFiles[$attributeName]['type']->extension);
+                // Set bytes
+                if (!$upload) {
+                    Yii::error("Failed to save uploaded file to destination!
+                                [Full Path: "
+                                    . Yii::getAlias($this->_uploadedFiles[$attributeName]['path']->path)
+                                    . DIRECTORY_SEPARATOR
+                                    . $this->_uploadedFiles[$attributeName]['normalizedName']
+                                    . '.'
+                                    . $this->_uploadedFiles[$attributeName]['type']->extension
+                                    . "]
+                                [Uploaded File: "
+                                    . "Name: " . $uploadedFile->name
+                                    . " Size: " . $uploadedFile->size . " bytes"
+                                    . "]"
+                        , 'FileUploadBehavior');
+                    $this->owner->addError($attributeName, "Failed to save uploaded file to destination!");
                     $event->isValid = false;
                     return false;
                 }
@@ -135,163 +175,13 @@ class FileUploadBehavior extends Behavior
         }
     }
 
-    public function afterDelete($event) {
-        if ($this->_saveFileModel) {
-            try {
-                $file = File::findOne($this->owner->file_id);
-                $file->delete();
-            } catch (\Exception $e) {
-                // stay quiet - file may have been deleted previously
-            }
-        }
+    public function beforeUpdate($event) {
+
     }
 
-    /**
-     * This is the path of the final destination for the uploaded file. Aliases can be used.
-     * Required if $this->pathAttribute is not set.
-     * @param $path string The alias of the path to store uploaded file
-     */
-
-    public function setPath($path) {
-        if (is_string($path) && !empty($path)) {
-            $this->_path = $path;
-        }
-    }
-
-    /**
-     * Refer to wmc/models/FileType for a list of supported file types
-     * @param $fileTypeIds array List of FileType ID's to allow.
-     */
-
-    public function setFileTypes($fileTypeIds) {
-        if (!empty($fileTypeIds)) {
-            $this->_fileTypes = FileType::find()->joinWith('mimeTypes')->includeTypes($fileTypeIds)->all();
-        }
-    }
-
-    /**
-     * Refer to wmc/models/FileType for a list of supported file types
-     * @param $fileTypeIds array List of FileType ID's to NOT allow.
-     */
-
-    public function setFileTypesExclude($fileTypeIds) {
-        if (!empty($fileTypeIds) && empty($this->fileTypes)) {
-            $this->_fileTypes = FileType::find()->joinWith('mimeTypes')->excludeTypes($fileTypeIds)->all();
-        }
-    }
-
-    public function getFileTypes() {
-        return $this->_fileTypes;
-    }
-
-    /**
-     * Set the min file size in bytes. Defaults to NULL.
-     * @param $bytes int Range:(1-4294967295)
-     */
-
-    public function setMinSize($bytes) {
-        if (is_int($bytes) && $bytes > 0 && $bytes <= 4294967295) {
-            $this->_minSize = $bytes;
-        }
-    }
-
-    public function getMinSize() {
-        return $this->_minSize;
-    }
-
-    /**
-     * Set the max file size in bytes. Defaults to 4294967295.
-     * @param $bytes int Range:(1-4294967295)
-     */
-
-    public function setMaxSize($bytes) {
-        if (is_int($bytes) && $bytes > 0 && $bytes <= 4294967295) {
-            $this->_maxSize = $bytes;
-        }
-    }
-
-    public function getMaxSize() {
-        return $this->_maxSize;
-    }
-
-    /**
-     * Enforce whether file upload is required field.
-     * @param $required bool Defaults to true
-     */
-
-    public function setUploadRequired($required) {
-        if (is_bool($required)) {
-            $this->_uploadRequired = $required;
-        }
-    }
-
-    public function getUploadRequired() {
-        return $this->_uploadRequired;
-    }
-
-    /**
-     * Setting this to false will not save the File Model, simply validate and upload file.
-     * @param $bool bool True saves File Model after upload, Defaults to true
-     */
-
-    public function setSaveFileModel($bool) {
-        if (is_bool($bool)) {
-            $this->_saveFileModel = $bool;
-        }
-    }
-
-    public function getSaveFileModel() {
-        return $this->_saveFileModel;
-    }
-
-    /**
-     * Sets File inline property. Only applicable if $this->_saveFileModel is true.
-     * @param $bool bool Whether file should appear inline or not
-     */
-
-    public function setInline($bool) {
-        if (is_bool($bool)) {
-            $this->_inline = $bool;
-        }
-    }
-
-    public function getInline() {
-        return $this->_inline;
-    }
-
-    /**
-     * Sets File status property. Only applicable if $this->_saveFileModel is true.
-     * @param $status integer Status of File Model, defaults to 1
-     */
-
-    public function setStatus($status) {
-        if (is_int($status)) {
-            $this->_status = $status;
-        }
-    }
-
-    public function getStatus() {
-        return $this->_status;
-    }
-
-    /**
-     * UserGroups that will be linked to this file. Only applicable if $this->_saveFileModel is true.
-     * @param $userGroups array UserGroup ID's that are allowed to access this file.
-     */
-
-    public function setUserGroups($userGroups) {
-        if (is_array($userGroups) && !empty($userGroups)) {
-            $this->_userGroups = $userGroups;
-        }
-    }
-
-    public function getUserGroups() {
-        return $this->_userGroups;
-    }
-
-    protected function getMimeTypes() {
+    public function getAllowedMimeTypes($attribute) {
         $mimeTypes = [];
-        foreach ($this->getFileTypes() as $fileType) {
+        foreach ($this->_attributes[$attribute]['fileTypes'] as $fileType) {
             foreach ($fileType->mimeTypes as $mimeType) {
                 $mimeTypes[] = $mimeType->mime_type;
             }
@@ -299,4 +189,36 @@ class FileUploadBehavior extends Behavior
         return $mimeTypes;
     }
 
+    public function getAllowedFileExtensions($attribute, $primaryOnly = false) {
+        $extensions = [];
+        foreach ($this->_attributes[$attribute]['fileTypes'] as $fileType) {
+            if ($primaryOnly) {
+                $extensions[] = $fileType->extension;
+            } else {
+                foreach ($fileType->extensions as $extension) {
+                    $extensions[] = $extension->extension;
+                }
+            }
+        }
+        return $extensions;
+    }
+
+    public function getAllowedFileExtensionsHint($attribute) {
+        $sorted = $this->getAllowedFileExtensions($attribute, true);
+        sort($sorted);
+        return 'Accepts ' . Inflector::sentence($sorted) . ' file types.';
+    }
+
+    public function getAllowedFileTypes($attribute) {
+        return $this->_attributes[$attribute]['fileTypes'];
+    }
+
+    public function getUploadedFileModel($attribute = null) {
+        return $this->owner;
+    }
+
+
+    public function getUploadedFileName($attribute = null) {
+        return $this->getUploadedFileModel($attribute)->fullName;
+    }
 }

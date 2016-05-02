@@ -3,36 +3,21 @@
 namespace wmc\behaviors;
 
 use Yii;
-use yii\base\Behavior;
+use wmc\behaviors\AttributeBehavior;
 use yii\validators\Validator;
 use yii\base\InvalidConfigException;
 use wmc\db\ActiveRecord;
 
-class ToggleEmptyBehavior extends Behavior
+class ToggleEmptyBehavior extends AttributeBehavior
 {
     const TOGGLE_POSTFIX = '_toggle_button';
-
-    protected $_attributes = [];
 
     public function events()
     {
         return [
-            ActiveRecord::EVENT_AFTER_FIND => 'afterFind'
+            ActiveRecord::EVENT_AFTER_FIND => 'syncToggleButton',
+            ActiveRecord::EVENT_BEFORE_VALIDATE => 'syncToggleButton',
         ];
-    }
-
-    public function setAttributes($attributes) {
-        if (!empty($attributes)) {
-            if (is_string($attributes)) {
-                $this->_attributes[] = $attributes;
-            } else if (is_array($attributes)) {
-                $this->_attributes = $attributes;
-            }
-        }
-    }
-
-    public function getAttributes() {
-        return $this->_attributes;
     }
 
     public function attach($owner) {
@@ -63,14 +48,18 @@ class ToggleEmptyBehavior extends Behavior
         return $attribute . static::TOGGLE_POSTFIX;
     }
 
-    public function afterFind($event) {
+    public function syncToggleButton($event) {
         foreach ($this->_attributes as $attribute) {
-            $toggleButtonAttributeName = $this->generateToggleButtonAttributeName($attribute);
-            if (empty($this->owner->$attribute)) {
-                $this->owner->$toggleButtonAttributeName = 0;
-            } else {
-                $this->owner->$toggleButtonAttributeName = 1;
-            }
+            $this->setToggle($attribute);
+        }
+    }
+
+    protected function setToggle($attribute) {
+        $toggleButtonAttributeName = $this->generateToggleButtonAttributeName($attribute);
+        if (empty($this->owner->$attribute)) {
+            $this->owner->$toggleButtonAttributeName = 0;
+        } else {
+            $this->owner->$toggleButtonAttributeName = 1;
         }
     }
 }

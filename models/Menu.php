@@ -33,14 +33,14 @@ class Menu extends \wmc\db\ActiveRecord
 
     public function behaviors() {
         return [
-            'tree' => [
-                'class' => NestedSetsBehavior::className(),
-                'treeAttribute' => 'tree_id'
-            ],
             [
                 'class' => UserGroupAccessBehavior::className(),
                 'viaTableName' => '{{%menu_access}}',
                 'itemIdField' => 'menu_id'
+            ],
+            'tree' => [
+                'class' => NestedSetsBehavior::className(),
+                'treeAttribute' => 'tree_id'
             ]
         ];
     }

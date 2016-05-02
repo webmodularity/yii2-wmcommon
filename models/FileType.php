@@ -4,23 +4,20 @@ namespace wmc\models;
 
 use Yii;
 use yii\helpers\ArrayHelper;
-use yii\helpers\FileHelper;
 use wmc\models\FileTypeQuery;
+use wmc\models\FileTypeExtension;
 use wmc\models\FileTypeMime;
+use wmc\models\FileTypeIcon;
 
 /**
  * This is the model class for table "common.file_type".
  *
  * @property integer $id
  * @property string $name
- * @property string $extension
  * @property integer $allow_inline
  */
 class FileType extends \wmc\db\ActiveRecord
 {
-    protected $_iconNames = [
-        1 => 'file-pdf-o'
-    ];
 
     public static function find()
     {
@@ -41,12 +38,10 @@ class FileType extends \wmc\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'extension'], 'required'],
+            [['name'], 'required'],
             [['allow_inline'], 'integer'],
             [['name'], 'string', 'max' => 50],
-            [['extension'], 'string', 'max' => 5],
-            [['name'], 'unique'],
-            [['extension'], 'unique']
+            [['name'], 'unique']
         ];
     }
 
@@ -58,9 +53,16 @@ class FileType extends \wmc\db\ActiveRecord
         return [
             'id' => 'ID',
             'name' => 'Name',
-            'extension' => 'Extension',
             'allow_inline' => 'Allow Inline',
         ];
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getCategory()
+    {
+        return $this->hasOne(FileTypeCategory::className(), ['id' => 'category_id']);
     }
 
     /**
@@ -72,26 +74,36 @@ class FileType extends \wmc\db\ActiveRecord
     }
 
     /**
-     * Should be called BEFORE move_uploaded_file call!
-     * @param $uploadedFile \yii\web\UploadedFile
-     * @return FileType Tries to find FileType based first on extension but falls back to first available mimi-type match (sorted by id ASC)
+     * @return \yii\db\ActiveQuery
      */
+    public function getIcons()
+    {
+        return $this->hasMany(FileTypeIcon::className(), ['file_type_id' => 'id']);
+    }
 
-    public static function findByUploadedFile($uploadedFile) {
-        // Try and find by MIME (using FileHelper to get actual MIME type)
-        $mimeType = FileHelper::getMimeType($uploadedFile->tempName);
-        if (!empty($mimeType)) {
-            return static::find()->joinWith(['mimeTypes'])->where(['mime_type' => $mimeType])->limit(1)->one();
-        } else {
-            return null;
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getExtensions()
+    {
+        return $this->hasMany(FileTypeExtension::className(), ['file_type_id' => 'id']);
+    }
+
+    public function getPrimaryExtension()
+    {
+        return $this->hasOne(FileTypeExtension::className(), ['file_type_id' => 'id'])->andOnCondition(['is_primary' => 1]);
+    }
+
+    public function getExtension() {
+        return $this->primaryExtension->extension;
+    }
+
+    public static function getFileTypeList($fileTypeIds = []) {
+        $query = FileType::find()->orderBy(['name' => SORT_ASC]);
+        if (!empty($fileTypeIds) && is_array($fileTypeIds)) {
+            $query->andWhere(['in', 'id', $fileTypeIds]);
         }
-    }
 
-    public function getIconName() {
-        return isset($this->_iconNames[$this->id]) ? $this->_iconNames[$this->id] : 'file-o';
-    }
-
-    public static function getFileTypeList($excludeIds = [], $includeIds = []) {
-        return ArrayHelper::map(FileType::find()->includeTypes($includeIds)->excludeTypes($excludeIds)->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
+        return ArrayHelper::map($query->all(), 'id', 'name');
     }
 }

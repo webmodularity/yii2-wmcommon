@@ -4,6 +4,7 @@ namespace wmc\db;
 
 class ActiveRecord extends \yii\db\ActiveRecord
 {
+
     /**
      * Takes either a DateTime object, timestamp integer, or null (default) = time()
      * Used for inserting Datetime strings into MySQL, assumes web server and MySQL server are in same timezone.

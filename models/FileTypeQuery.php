@@ -3,27 +3,23 @@
 namespace wmc\models;
 
 /**
- * This is the ActiveQuery class for [[Log]].
+ * This is the ActiveQuery class for [[FileType]].
  *
- * @see Log
+ * @see FileType
  */
 class FileTypeQuery extends \yii\db\ActiveQuery
 {
 
-    public function includeTypes($typeIds) {
-        if (!empty($typeIds)) {
-            return $this->andWhere(['in', 'id', $typeIds]);
-        } else {
-            return $this;
-        }
+    public function iconName($iconSetId) {
+        return $this->joinWith('icons')->andOnCondition(['icon_set_id' => $iconSetId]);
     }
 
-    public function excludeTypes($typeIds) {
-        if (!empty($typeIds)) {
-            return $this->andWhere(['not in', 'id', $typeIds]);
-        } else {
-            return $this;
-        }
+    public function inName($names) {
+        return $this->alias('t')->joinWith('primaryExtension primaryExtension')->andWhere(['in', 't.name', $names]);
+    }
+
+    public function fromMimeType($mimeType) {
+        return $this->joinWith(['mimeTypes', 'primaryExtension primaryExtension'])->where(['mime_type' => $mimeType]);
     }
 
 }
