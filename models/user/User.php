@@ -7,7 +7,7 @@ use yii\web\IdentityInterface;
 use wmc\behaviors\TimestampBehavior;
 use wmc\models\Person;
 use yii\helpers\VarDumper;
-use yii\helpers\ArrayHelper;
+use himiklab\yii2\recaptcha\ReCaptchaValidator;
 use wmc\behaviors\RelatedModelBehavior;
 
 /**
@@ -97,10 +97,7 @@ class User extends \wmc\db\ActiveRecord implements IdentityInterface
             [['email_confirm'], 'required', 'on' => ['registerEmailConfirm', 'changeEmail']],
             [['email_confirm'], 'compare', 'compareAttribute' => 'email', 'message' => 'Email Addresses do not match.',
                 'on' => ['registerEmailConfirm', 'changeEmail']],
-            [['captcha'], 'wmc\modules\recaptcha\validators\RecaptchaValidator',
-                'incorrectMessage' => "Failed to verify reCaptcha field.",
-                'emptyMessage' => "Please confirm you aren't a robot.",
-                'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername']],
+            [['captcha'], ReCaptchaValidator::className(), 'on' => ['registerEmail', 'registerEmailConfirm', 'registerUsername']],
         ];
     }
 
