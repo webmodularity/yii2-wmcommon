@@ -16,7 +16,7 @@
     "yiisoft/yii2-swiftmailer": "~2.0.0",
     "yiisoft/yii2-jui": "~2.0.0",
     "rmrevin/yii2-fontawesome": "*",
-    "zelenin/yii2-recaptcha-widget": "*",
+    "himiklab/yii2-recaptcha-widget": "*",
     "creocoder/yii2-nested-sets": "*",
     "2amigos/yii2-switch-widget": "~1.0",
     "kartik-v/yii2-widget-select2": "*",
