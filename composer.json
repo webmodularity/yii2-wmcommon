@@ -6,7 +6,7 @@
     {
       "name": "Rory Hellyer",
       "email": "rory@webmodularity.com",
-      "homepage": "http://www.webmodularity.com/"
+      "homepage": "https://www.webmodularity.com/"
     }
   ],
   "require": {
@@ -27,7 +27,7 @@
     "bower-asset/bs-confirmation": "*",
     "bower-asset/jquery.redirect": "*",
     "bower-asset/bootstrap-toggle": "*",
-    "npm-asset/simplemde": "*"
+    "bower-asset/simplemde": "*"
   },
   "config": {
     "process-timeout": 1800
